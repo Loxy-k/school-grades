@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Report Card</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        h1 { color: #1e3c72; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Report Card - {{ student.first_name }} {{ student.last_name }}</h1>
+    <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+    <p><strong>Form:</strong> {{ student.form }}</p>
+    <p><strong>Term:</strong> {{ term_display }}</p>
+    
+    <h2>Grades</h2>
+    {% if grades %}
+    <table>
+        <tr><th>Subject</th><th>Score</th><th>Grade</th><th>Comments</th></tr>
+        {% for g in grades %}
+        <tr>
+            <td>{{ g.subject.name }}</td>
+            <td>{{ g.score }}</td>
+            <td>{{ g.short_grade }}</td>
+            <td>{{ g.comment }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p><strong>Subjects Passed:</strong> {{ passed_count }}/{{ grades|length }}</p>
+    {% else %}
+    <p>No grades available.</p>
+    {% endif %}
+    
+    <p style="margin-top: 50px;">
+        <strong>Generated:</strong> {{ current_date }}<br>
+        Fortune Seekers Secondary School
+    </p>
+</body>
+</html>

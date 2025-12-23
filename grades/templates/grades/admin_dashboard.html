@@ -1,0 +1,418 @@
+{% extends 'grades/base.html' %}
+
+{% block title %}Admin Dashboard - Report Card Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 0 20px rgba(0,0,0,0.08);
+        transition: transform 0.3s;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .card-icon {
+        font-size: 2.5rem;
+        opacity: 0.7;
+    }
+    
+    .form-card {
+        border-left: 4px solid;
+    }
+    
+    .form-science {
+        border-left: 4px solid #3498db;
+        background: linear-gradient(to right, rgba(52, 152, 219, 0.05), transparent);
+    }
+    
+    .form-humanities {
+        border-left: 4px solid #9b59b6;
+        background: linear-gradient(to right, rgba(155, 89, 182, 0.05), transparent);
+    }
+    
+    .form-junior {
+        border-left: 4px solid #2ecc71;
+        background: linear-gradient(to right, rgba(46, 204, 113, 0.05), transparent);
+    }
+    
+    .print-btn {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-weight: bold;
+        transition: all 0.3s;
+        display: block;
+        text-align: center;
+        text-decoration: none;
+    }
+    
+    .print-btn:hover {
+        background: linear-gradient(135deg, #2a5298 0%, #3a62a8 100%);
+        transform: scale(1.05);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1e3c72;
+    }
+    
+    .stream-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .stream-science {
+        background-color: #3498db;
+        color: white;
+        border: 1px solid #2980b9;
+    }
+    
+    .stream-humanities {
+        background-color: #9b59b6;
+        color: white;
+        border: 1px solid #8e44ad;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-2">
+                <i class="bi bi-speedometer2 me-2"></i>Report Card Management Dashboard
+            </h1>
+            <p class="text-muted">
+                Welcome, {{ user.get_full_name|default:user.username }} ({{ user_profile.get_role_display }})
+                {% if user_profile.is_teacher %}
+                | Responsible for Forms: {{ user_profile.forms_responsible|default:"Not assigned" }}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body text-center">
+                    <div class="card-icon text-primary mb-3">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div class="stats-number">{{ total_students }}</div>
+                    <p class="text-muted mb-0">Total Students</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body text-center">
+                    <div class="card-icon text-success mb-3">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                    <div class="stats-number">{{ total_grades }}</div>
+                    <p class="text-muted mb-0">Grades Recorded</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body text-center">
+                    <div class="card-icon text-warning mb-3">
+                        <i class="bi bi-printer-fill"></i>
+                    </div>
+                    <div class="stats-number">{{ available_forms|length }}</div>
+                    <p class="text-muted mb-0">Forms Accessible</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body text-center">
+                    <div class="card-icon text-info mb-3">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </div>
+                    <div class="stats-number">3</div>
+                    <p class="text-muted mb-0">Academic Terms</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Report Printing Section -->
+    <div class="card dashboard-card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-download me-2"></i>Bulk Report Card Printing
+            </h5>
+            <p class="text-muted mb-0 small">Generate all report cards for a class with single click</p>
+        </div>
+        <div class="card-body">
+            {% if available_forms %}
+            <div class="row">
+                {% for form_code, form_name in available_forms %}
+                <div class="col-md-4 mb-4">
+                    <div class="card form-card h-100 
+                        {% if form_code in 'F3S,F4S' %}form-science
+                        {% elif form_code in 'F3H,F4H' %}form-humanities
+                        {% else %}form-junior{% endif %}">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                {{ form_name }}
+                                {% if form_code in 'F3S,F4S' %}
+                                <span class="badge stream-science">Science</span>
+                                {% elif form_code in 'F3H,F4H' %}
+                                <span class="badge stream-humanities">Humanities</span>
+                                {% endif %}
+                            </h5>
+                            <p class="text-muted small">
+                                {% if form_code in 'F3S,F3H,F4S,F4H' %}
+                                    Senior Class
+                                {% else %}
+                                    Junior Class
+                                {% endif %}
+                            </p>
+                            
+                            <!-- Student Count (Optional - you can add this later) -->
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-people me-1"></i>
+                                    <!-- You can add student count here if you pass it from view -->
+                                    {{ form_code }} students
+                                </small>
+                            </div>
+                            
+                            <!-- Term Selection -->
+                            <div class="mb-3">
+                                <label class="form-label small">Select Term:</label>
+                                <select class="form-select form-select-sm term-select" id="term-{{ form_code }}">
+                                    {% for term_code, term_name in term_choices %}
+                                    <option value="{{ term_code }}">{{ term_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- Print Button -->
+                            <a href="#" 
+                               class="print-btn"
+                               onclick="printAllReports('{{ form_code }}', 'term-{{ form_code }}')">
+                                <i class="bi bi-download me-1"></i> 
+                                {% if form_code in 'F3S,F4S' %}
+                                    Print Science Reports
+                                {% elif form_code in 'F3H,F4H' %}
+                                    Print Humanities Reports
+                                {% else %}
+                                    Print Class Reports
+                                {% endif %}
+                            </a>
+                            
+                            <div class="mt-2 text-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Downloads as ZIP file
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-lock display-4 text-muted mb-3"></i>
+                <h4 class="text-muted">No Forms Assigned</h4>
+                <p class="text-muted">You don't have permission to print reports for any forms.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Class Ranking Reports Section -->
+    <div class="card dashboard-card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-trophy me-2"></i>Class Ranking Reports
+            </h5>
+            <p class="text-muted mb-0 small">View detailed class performance with rankings</p>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-warning">
+                        <div class="card-body text-center">
+                            <i class="bi bi-bar-chart display-4 text-warning mb-3"></i>
+                            <h5>Class Ranking</h5>
+                            <p class="text-muted">View student rankings with all subject scores</p>
+                            <a href="{% url 'grades:class_ranking' %}?form=F1&term=T1" 
+                               class="btn btn-warning">
+                                <i class="bi bi-eye me-1"></i> View Rankings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-success">
+                        <div class="card-body text-center">
+                            <i class="bi bi-table display-4 text-success mb-3"></i>
+                            <h5>Performance Analysis</h5>
+                            <p class="text-muted">Detailed subject-wise performance analysis</p>
+                            <a href="{% url 'grades:class_ranking' %}?form=F1&term=T1" 
+                               class="btn btn-success">
+                                <i class="bi bi-graph-up me-1"></i> View Analysis
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-info">
+                        <div class="card-body text-center">
+                            <i class="bi bi-download display-4 text-info mb-3"></i>
+                            <h5>Export Rankings</h5>
+                            <p class="text-muted">Download class rankings as PDF or Excel</p>
+                            <a href="{% url 'grades:download_class_ranking_pdf' %}?form=F1&term=T1" 
+                               class="btn btn-info">
+                                <i class="bi bi-download me-1"></i> Export
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card dashboard-card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Grade Updates
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Student</th>
+                            <th>Subject</th>
+                            <th>Score</th>
+                            <th>Term</th>
+                            <th>Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for grade in recent_grades %}
+                        <tr>
+                            <td>{{ grade.created_at|date:"M d, Y" }}</td>
+                            <td>{{ grade.student.first_name }} {{ grade.student.last_name }}</td>
+                            <td>{{ grade.subject.name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if grade.score >= 80 %}bg-success
+                                    {% elif grade.score >= 50 %}bg-primary
+                                    {% else %}bg-danger{% endif %} 
+                                    rounded-pill px-3">
+                                    {{ grade.score }}
+                                </span>
+                            </td>
+                            <td>{{ grade.get_term_display }}</td>
+                            <td>{{ grade.grade_label }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">
+                                No recent grade updates
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function printAllReports(formCode, termSelectId) {
+        console.log('Starting bulk download for form:', formCode);
+        
+        const termSelect = document.getElementById(termSelectId);
+        if (!termSelect) {
+            alert('Error: Could not find term selector');
+            return;
+        }
+        
+        const term = termSelect.value;
+        console.log('Selected term:', term);
+        
+        // Get form name for confirmation message
+        const formCard = document.querySelector(`#term-${formCode}`)?.closest('.card');
+        const formName = formCard?.querySelector('.card-title')?.textContent || `Form ${formCode}`;
+        
+        // Show confirmation
+        if (!confirm(`Generate report cards for ALL students in ${formName} (Term ${term})?\n\nThis will create individual PDF files for each student.`)) {
+            return;
+        }
+        
+        // Show loading indicator
+        const button = event.target.closest('.print-btn');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Generating...';
+        button.disabled = true;
+        
+        // Start download
+        const downloadUrl = `/grades/reports/bulk-download/?form=${formCode}&term=${term}`;
+        console.log('Download URL:', downloadUrl);
+        
+        // Create hidden iframe for download
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = downloadUrl;
+        document.body.appendChild(iframe);
+        
+        // Also try direct window.location as backup
+        window.location.href = downloadUrl;
+        
+        // Reset button after 10 seconds (longer for larger files)
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            document.body.removeChild(iframe);
+        }, 10000);
+    }
+    
+    // Debug: Log when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Admin dashboard loaded');
+        
+        // Check if print buttons exist
+        const printButtons = document.querySelectorAll('.print-btn');
+        console.log('Found', printButtons.length, 'print buttons');
+        
+        // Add click listeners for debugging
+        printButtons.forEach((btn, index) => {
+            btn.addEventListener('click', function(e) {
+                console.log('Print button', index, 'clicked');
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,444 @@
+{% extends 'grades/base.html' %}
+
+{% block title %}Class Ranking - {{ form_display }} {{ term_display }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ranking-table th {
+        background-color: #1e3c72;
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .ranking-table td.position-cell {
+        font-weight: bold;
+        text-align: center;
+        background-color: #f8f9fa;
+        width: 60px;
+    }
+    
+    .position-1 { color: #ffd700; font-weight: bold; }
+    .position-2 { color: #c0c0c0; font-weight: bold; }
+    .position-3 { color: #cd7f32; font-weight: bold; }
+    
+    .score-cell {
+        text-align: center;
+        font-weight: 500;
+        min-width: 70px;
+    }
+    
+    .score-pass { background-color: #d4edda !important; }
+    .score-fail { background-color: #f8d7da !important; }
+    .score-absent { background-color: #e9ecef !important; color: #6c757d; font-style: italic; }
+    
+    .student-name-cell {
+        font-weight: 500;
+        min-width: 200px;
+    }
+    
+    .summary-card {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    
+    .subject-header {
+        writing-mode: vertical-lr;
+        transform: rotate(180deg);
+        text-align: center;
+        padding: 10px 5px;
+        white-space: nowrap;
+        font-weight: 500;
+        background-color: #f8f9fa;
+        border-left: 1px solid #dee2e6;
+    }
+    
+    .table-container {
+        max-height: 70vh;
+        overflow-x: auto;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+    }
+    
+    .filter-card {
+        background-color: #f8f9fa;
+        border-left: 4px solid #1e3c72;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-2">
+                <i class="bi bi-trophy me-2"></i>Class Ranking Report
+            </h1>
+            <p class="text-muted">
+                Academic performance ranking for {{ form_display }} - {{ term_display }}
+            </p>
+        </div>
+        <div class="col-auto">
+            <div class="d-flex gap-2">
+                <a href="{% url 'grades:admin_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label">Select Form:</label>
+                    <select class="form-select" id="formSelect" onchange="updateForm()">
+                        {% for f_code, f_name in student_form_choices %}
+                        <option value="{{ f_code }}" {% if f_code == form %}selected{% endif %}>
+                            {{ f_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Select Term:</label>
+                    <select class="form-select" id="termSelect" onchange="updateTerm()">
+                        {% for t_code, t_name in term_choices %}
+                        <option value="{{ t_code }}" {% if t_code == term %}selected{% endif %}>
+                            {{ t_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="mt-4">
+                        <a href="{% url 'grades:download_class_ranking_pdf' %}?form={{ form }}&term={{ term }}" 
+                           class="btn btn-success">
+                            <i class="bi bi-download me-1"></i>Download as PDF
+                        </a>
+                        <a href="?form={{ form }}&term={{ term }}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+    </div>
+    {% else %}
+    
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Total Students</h6>
+                    <h2 class="mb-0 text-primary">{{ total_students }}</h2>
+                    <small class="text-muted">in {{ form_display }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Subjects</h6>
+                    <h2 class="mb-0 text-success">{{ subjects|length }}</h2>
+                    <small class="text-muted">offered this term</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Program</h6>
+                    <h2 class="mb-0 text-warning">
+                        {% if is_senior %}MSCE{% else %}JCE{% endif %}
+                    </h2>
+                    <small class="text-muted">
+                        {% if is_senior %}Senior Level{% else %}Junior Level{% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Academic Term</h6>
+                    <h2 class="mb-0 text-info">{{ term_display }}</h2>
+                    <small class="text-muted">Performance Report</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="d-flex align-items-center">
+                            <div class="score-pass me-2" style="width: 20px; height: 20px; border-radius: 3px;"></div>
+                            <small>Passed (≥50%)</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="score-fail me-2" style="width: 20px; height: 20px; border-radius: 3px;"></div>
+                            <small>Failed (<50%)</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="score-absent me-2" style="width: 20px; height: 20px; border-radius: 3px; border: 1px solid #ced4da;"></div>
+                            <small>AB - Absent</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="position-1 me-1">🥇</div>
+                            <small>1st Position</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="position-2 me-1">🥈</div>
+                            <small>2nd Position</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="position-3 me-1">🥉</div>
+                            <small>3rd Position</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Ranking Table -->
+><thead>
+    <tr>
+        <th class="position-col">Pos</th>
+        <th class="student-name-cell">Student Name & ID</th>
+        <th class="text-center">Class/Stream</th>  <!-- Added column -->
+        <th class="text-center">Avg/Total</th>
+        <th class="text-center">Passed</th>
+        {% for subject in subjects %}
+        <th class="subject-header">
+            {{ subject.name|truncatechars:15 }}
+        </th>
+        {% endfor %}
+    </tr>
+</thead>
+        
+        <div class="table-container">
+            <table class="table table-bordered ranking-table mb-0">
+                <thead>
+                    <tr>
+                        <th class="position-cell">Pos</th>
+                        <th class="student-name-cell">Student Name & ID</th>
+                        <th class="text-center">Avg/Total</th>
+                        <th class="text-center">Passed</th>
+                        {% for subject in subjects %}
+                        <th class="subject-header">
+                            {{ subject.name|truncatechars:15 }}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in students_data %}
+                    <tr>
+            <!-- Position -->
+            <td class="position-cell position-{{ data.position }}">
+                {% if data.position == 1 %}🥇
+                {% elif data.position == 2 %}🥈
+                {% elif data.position == 3 %}🥉
+                {% else %}{{ data.position }}
+                {% endif %}
+            </td>>
+                        
+                        <!-- Student Info -->
+                         <td class="student-name-cell">
+                             <div class="fw-bold">{{ data.student.first_name }} {{ data.student.last_name }}</div>
+                             <small class="text-muted">ID: {{ data.student.student_id }}</small>
+                         </td>
+                        <!-- Class/Stream -->
+        <td class="text-center">
+            <div>{{ data.student.get_form_display }}</div>
+            {% if data.student.stream != 'NONE' %}
+            <small class="badge 
+                {% if data.student.stream == 'SCIENCE' %}bg-info
+                {% else %}bg-warning{% endif %}">
+                {{ data.student.get_stream_display }}
+            </small>
+            {% endif %}
+        </td>
+                        <!-- Average/Total -->
+                        <td class="text-center fw-bold">
+                            {{ data.ranking_display }}
+                        </td>
+                        
+                        <!-- Passed Count -->
+                        <td class="text-center">
+                            <span class="badge {% if data.passed_count >= 6 %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ data.passed_count }}/{{ data.total_subjects_taken }}
+                            </span>
+                        </td>
+                        
+                        <!-- Subject Scores -->
+                        {% for score in data.subject_scores %}
+                        <td class="score-cell 
+                            {% if score.score is None %}score-absent
+                            {% elif score.passed %}score-pass
+                            {% else %}score-fail{% endif %}">
+                            {{ score.display }}
+                            {% if score.score is not None %}
+                            <br>
+                            <small class="{% if score.passed %}text-success{% else %}text-danger{% endif %}">
+                                {{ score.grade }}
+                            </small>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ subjects|length|add:4 }}" class="text-center py-5">
+                            <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                            <h4 class="text-muted">No Data Available</h4>
+                            <p class="text-muted">No grades recorded for {{ form_display }} in {{ term_display }}</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="card-footer bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        AB = Absent | Showing {{ students_data|length }} students
+                    </small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        Generated: {% now "F j, Y, g:i a" %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Notes -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6><i class="bi bi-lightbulb me-2"></i>How to Read This Table</h6>
+                    <ul class="small">
+                        <li><strong>Position:</strong> Ranking based on {% if is_senior %}total points{% else %}average score{% endif %}</li>
+                        <li><strong>Avg/Total:</strong> {% if is_senior %}Total points (best 6 subjects){% else %}Average percentage{% endif %}</li>
+                        <li><strong>Passed:</strong> Subjects passed / Subjects taken</li>
+                        <li><strong>AB:</strong> Student was absent for that subject</li>
+                        <li>Green cells indicate passing scores (≥50%)</li>
+                        <li>Red cells indicate failing scores (<50%)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6><i class="bi bi-download me-2"></i>Export Options</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'grades:download_class_ranking_pdf' %}?form={{ form }}&term={{ term }}" 
+                           class="btn btn-outline-success">
+                            <i class="bi bi-file-pdf me-1"></i> Download as PDF
+                        </a>
+                        <button class="btn btn-outline-primary" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i> Print This Report
+                        </button>
+                        <a href="{% url 'grades:bulk_download_reports' %}?form={{ form }}&term={{ term }}" 
+                           class="btn btn-outline-info">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Individual Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateForm() {
+        const formSelect = document.getElementById('formSelect');
+        const termSelect = document.getElementById('termSelect');
+        const form = formSelect.value;
+        const term = termSelect.value;
+        
+        console.log('Changing to form:', form, 'term:', term);
+        window.location.href = `{% url 'grades:class_ranking' %}?form=${form}&term=${term}`;
+    }
+    
+    function updateTerm() {
+        const formSelect = document.getElementById('formSelect');
+        const termSelect = document.getElementById('termSelect');
+        const form = formSelect.value;
+        const term = termSelect.value;
+        
+        console.log('Changing to form:', form, 'term:', term);
+        window.location.href = `{% url 'grades:class_ranking' %}?form=${form}&term=${term}`;
+    }
+    
+    // Make table headers sticky when scrolling
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Class ranking page loaded');
+        console.log('Current form:', '{{ form }}');
+        console.log('Current term:', '{{ term }}');
+        
+        // Initialize dropdowns
+        const formSelect = document.getElementById('formSelect');
+        const termSelect = document.getElementById('termSelect');
+        
+        if (formSelect) {
+            formSelect.value = '{{ form }}';
+        }
+        if (termSelect) {
+            termSelect.value = '{{ term }}';
+        }
+        
+        // Add event listeners
+        if (formSelect) {
+            formSelect.addEventListener('change', updateForm);
+        }
+        if (termSelect) {
+            termSelect.addEventListener('change', updateTerm);
+        }
+        
+        const tableContainer = document.querySelector('.table-container');
+        if (tableContainer) {
+            tableContainer.addEventListener('scroll', function() {
+                const headers = this.querySelectorAll('thead th');
+                headers.forEach(header => {
+                    if (this.scrollLeft > 0) {
+                        header.style.transform = `translateX(${this.scrollLeft}px)`;
+                    } else {
+                        header.style.transform = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

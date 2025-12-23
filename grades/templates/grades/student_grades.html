@@ -1,0 +1,563 @@
+{% extends 'grades/base.html' %}
+
+{% block title %}Report Card - {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .student-info-box {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .grade-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .grade-badge {
+        font-weight: 600;
+        padding: 0.25em 0.5em;
+        border-radius: 0.25rem;
+        font-size: 0.9em;
+    }
+    
+    .grade-A { background-color: #d1e7dd; color: #0f5132; }
+    .grade-B { background-color: #d1ecf1; color: #0c5460; }
+    .grade-C { background-color: #fff3cd; color: #856404; }
+    .grade-D { background-color: #f8d7da; color: #721c24; }
+    .grade-F { background-color: #dc3545; color: white; }
+    
+    /* Senior grade colors */
+    .grade-1 { background-color: #d1e7dd; color: #0f5132; }
+    .grade-2 { background-color: #c3e6cb; color: #155724; }
+    .grade-3 { background-color: #d1ecf1; color: #0c5460; }
+    .grade-4 { background-color: #bee5eb; color: #0c5460; }
+    .grade-5 { background-color: #fff3cd; color: #856404; }
+    .grade-6 { background-color: #ffeaa7; color: #856404; }
+    .grade-7 { background-color: #f8d7da; color: #721c24; }
+    .grade-8 { background-color: #f5c6cb; color: #721c24; }
+    .grade-9 { background-color: #dc3545; color: white; }
+    
+    .summary-card {
+        border-left: 4px solid;
+        border-radius: 0.5rem;
+    }
+    
+    .summary-passed { border-left-color: #198754; }
+    .summary-points { border-left-color: #0d6efd; }
+    .summary-position { border-left-color: #ffc107; }
+    .summary-result { border-left-color: #6f42c1; }
+    
+    .term-selector .btn-term {
+        border: 2px solid #dee2e6;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        margin: 0 0.25rem;
+        transition: all 0.3s;
+    }
+    
+    .term-selector .btn-term:hover {
+        border-color: #1e3c72;
+        background-color: #f8f9fa;
+    }
+    
+    .term-selector .btn-term.active {
+        background-color: #1e3c72;
+        color: white;
+        border-color: #1e3c72;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Report Card Header -->
+<div class="card border-0 shadow-lg mb-4">
+    <div class="card-body report-card-header p-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-5 fw-bold mb-3">ACADEMIC REPORT CARD</h1>
+                
+                <!-- Student Info Box - Updated -->
+<div class="student-info-box mb-3">
+    <div class="row">
+        <div class="col-md-6">
+            <p class="mb-2">
+                <i class="bi bi-person-circle me-2"></i>
+                <strong>STUDENT NAME:</strong> {{ student.first_name }} {{ student.last_name }}
+            </p>
+            <p class="mb-2">
+                <i class="bi bi-person-badge me-2"></i>
+                <strong>STUDENT ID:</strong> {{ student.student_id }}
+            </p>
+        </div>
+        <div class="col-md-6">
+            <p class="mb-2">
+                <i class="bi bi-mortarboard me-2"></i>
+                <strong>CLASS/FORM:</strong> 
+                {{ student.get_form_display }}
+                {% if student.stream != 'NONE' %}
+                <span class="badge 
+                    {% if student.stream == 'SCIENCE' %}bg-info
+                    {% else %}bg-warning{% endif %} ms-2">
+                    {{ student.get_stream_display }}
+                </span>
+                {% endif %}
+            </p>
+            <p class="mb-2">
+                <i class="bi bi-calendar-event me-2"></i>
+                <strong>ACADEMIC TERM:</strong> {{ term_display }}
+            </p>
+        </div>
+    </div>
+</div>
+                
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-dark me-3">
+                        <i class="bi bi-building me-1"></i>
+                        Fortune Seekers Secondary School
+                    </span>
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-award me-1"></i>
+                        {% if student.is_senior %}MSCE PROGRAM{% else %}JCE PROGRAM{% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="col-md-4 text-center">
+                <div class="bg-white text-dark rounded p-3 shadow">
+                    <h5 class="mb-2 fw-bold">OFFICIAL REPORT</h5>
+                    <div class="border-bottom mb-2 pb-2">
+                        <small class="text-muted d-block">Issue Date</small>
+                        <strong>{% now "F j, Y" %}</strong>
+                    </div>
+                    <p class="text-muted small mb-0">Principal's Signature</p>
+                    <p class="text-muted small mb-0">____________________</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Term Selector -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5 class="mb-3">
+            <i class="bi bi-calendar-range me-2"></i>Select Academic Term
+        </h5>
+        <div class="term-selector">
+            <a href="?term=T1" class="btn-term {% if term == 'T1' %}active{% endif %}">
+                Term 1
+            </a>
+            <a href="?term=T2" class="btn-term {% if term == 'T2' %}active{% endif %}">
+                Term 2
+            </a>
+            <a href="?term=T3" class="btn-term {% if term == 'T3' %}active{% endif %}">
+                Term 3
+            </a>
+            <span class="ms-3 text-muted">
+                Currently viewing: <strong>{{ term_display }}</strong>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Academic Performance Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">
+            <i class="bi bi-table me-2"></i>SUBJECT PERFORMANCE - {{ term_display }}
+        </h4>
+        <p class="text-muted mb-0 small">Detailed results for all subjects in Form {{ student.form }}</p>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if grades %}
+        <div class="table-responsive">
+            <table class="table table-hover grade-table mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">SUBJECT</th>
+                        <th class="text-center">SCORE</th>
+                        <th class="text-center">GRADE</th>
+                        <th>TEACHER'S COMMENTS</th>
+                        <th class="text-center pe-4">CLASS POSITION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in grades %}
+                    <tr>
+                        <td class="ps-4 fw-semibold">
+                            <i class="bi bi-book me-2"></i>{{ g.subject.name }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge 
+                                {% if g.score >= 80 %}bg-success
+                                {% elif g.score >= 50 %}bg-primary
+                                {% else %}bg-danger{% endif %} 
+                                rounded-pill px-3 py-1">
+                                {{ g.score }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="grade-badge grade-{{ g.short_grade }}">
+                                {{ g.short_grade }}
+                            </span>
+                            <br>
+                            <small class="text-muted">{{ g.comment }}</small>
+                        </td>
+                        <td>
+                            {% if g.comment %}
+                                <small class="text-muted">{{ g.comment }}</small>
+                            {% else %}
+                                <small class="text-muted fst-italic">No comments provided</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center pe-4">
+                            {% if g.position %}
+                                <span class="badge 
+                                    {% if g.position == 1 %}bg-warning text-dark
+                                    {% elif g.position <= 5 %}bg-info
+                                    {% else %}bg-secondary{% endif %} 
+                                    rounded-pill px-3">
+                                    {{ g.position }}
+                                    {% if g.position == 1 %}
+                                    <i class="bi bi-trophy-fill ms-1"></i>
+                                    {% endif %}
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    in Form {{ student.form }}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+            <h4 class="text-muted">NO GRADES RECORDED</h4>
+            <p class="text-muted">No grades available for {{ term_display }}.</p>
+            <div class="mt-3">
+                <div class="btn-group" role="group">
+                    <a href="?term=T1" class="btn btn-outline-primary">Check Term 1</a>
+                    <a href="?term=T2" class="btn btn-outline-primary">Check Term 2</a>
+                    <a href="?term=T3" class="btn btn-outline-primary">Check Term 3</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if grades %}
+    <div class="card-footer bg-light">
+        <div class="row">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Showing {{ grades|length }} subject{{ grades|length|pluralize }} for {{ term_display }}
+                </small>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    Report generated: {% now "F j, Y, g:i a" %}
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Performance Summary -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card summary-card summary-passed h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">
+                    <i class="bi bi-check-circle me-2"></i>Subjects Passed
+                </h6>
+                <h2 class="mb-1">{{ passed_count }}/{{ grades|length }}</h2>
+                <small class="text-success">
+                    {% if grades|length > 0 %}
+                        {{ passed_count|floatformat:0 }}% pass rate
+                    {% endif %}
+                </small>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Including English: 
+                        {% for g in grades %}
+                            {% if g.subject.name.lower == 'english' %}
+                                {% if g.is_pass %}✓{% else %}✗{% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card summary-card summary-points h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">
+                    <i class="bi bi-bar-chart me-2"></i>Total Points
+                </h6>
+                <h2 class="mb-1">
+                    {% if total_points %}
+                        {{ total_points }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </h2>
+                <small class="text-primary">
+                    {% if student.is_senior %}
+                        Best 6 including English
+                    {% else %}
+                        Average Score Basis
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card summary-card summary-position h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">
+                    <i class="bi bi-trophy me-2"></i>Class Position
+                </h6>
+                <h2 class="mb-1">
+                    {% if overall_position %}
+                        {{ overall_position }}
+                        {% if overall_position == 1 %}
+                        <i class="bi bi-trophy-fill text-warning"></i>
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </h2>
+                <small class="text-warning">
+                    In Form {{ student.form }} for {{ term_display }}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card summary-card summary-result h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">
+                    <i class="bi bi-clipboard-check me-2"></i>Overall Result
+                </h6>
+                <h2 class="mb-1">
+                    <span class="badge 
+                        {% if overall_result == 'Pass' %}bg-success
+                        {% elif 'Fail' in overall_result %}bg-danger
+                        {% else %}bg-secondary{% endif %} 
+                        fs-6 py-2 px-3">
+                        {{ overall_result }}
+                    </span>
+                </h2>
+                <small>
+                    {% if student.is_senior %}
+                        MSCE Criteria
+                    {% else %}
+                        JCE Criteria
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grading System & Notes -->
+<div class="row mb-4">
+    <div class="col-md-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-key me-2"></i>
+                    {% if student.is_senior %}
+                        MSCE GRADING SYSTEM
+                    {% else %}
+                        JCE GRADING SYSTEM
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if student.is_senior %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">SCORE RANGE</th>
+                                <th class="text-center">POINT</th>
+                                <th>DESCRIPTION</th>
+                                <th class="text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="text-center">80-100</td><td class="text-center">1</td><td>DISTINCTION</td><td class="text-center"><span class="badge grade-1">PASS</span></td></tr>
+                            <tr><td class="text-center">70-79</td><td class="text-center">2</td><td>DISTINCTION</td><td class="text-center"><span class="badge grade-2">PASS</span></td></tr>
+                            <tr><td class="text-center">65-69</td><td class="text-center">3</td><td>STRONG CREDIT</td><td class="text-center"><span class="badge grade-3">PASS</span></td></tr>
+                            <tr><td class="text-center">60-64</td><td class="text-center">4</td><td>CREDIT</td><td class="text-center"><span class="badge grade-4">PASS</span></td></tr>
+                            <tr><td class="text-center">55-59</td><td class="text-center">5</td><td>CREDIT</td><td class="text-center"><span class="badge grade-5">PASS</span></td></tr>
+                            <tr><td class="text-center">50-54</td><td class="text-center">6</td><td>CREDIT</td><td class="text-center"><span class="badge grade-6">PASS</span></td></tr>
+                            <tr><td class="text-center">45-49</td><td class="text-center">7</td><td>PASS</td><td class="text-center"><span class="badge grade-7">PASS</span></td></tr>
+                            <tr><td class="text-center">40-44</td><td class="text-center">8</td><td>PASS</td><td class="text-center"><span class="badge grade-8">PASS</span></td></tr>
+                            <tr class="table-danger"><td class="text-center">0-39</td><td class="text-center">9</td><td>FAIL</td><td class="text-center"><span class="badge grade-9">FAIL</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">SCORE RANGE</th>
+                                <th class="text-center">GRADE</th>
+                                <th>DESCRIPTION</th>
+                                <th class="text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="text-center">80-100</td><td class="text-center">A</td><td>EXCELLENT</td><td class="text-center"><span class="badge grade-A">PASS</span></td></tr>
+                            <tr><td class="text-center">70-79</td><td class="text-center">B</td><td>VERY GOOD</td><td class="text-center"><span class="badge grade-B">PASS</span></td></tr>
+                            <tr><td class="text-center">60-69</td><td class="text-center">C</td><td>GOOD</td><td class="text-center"><span class="badge grade-C">PASS</span></td></tr>
+                            <tr><td class="text-center">40-59</td><td class="text-center">D</td><td>PASS</td><td class="text-center"><span class="badge grade-D">PASS</span></td></tr>
+                            <tr class="table-danger"><td class="text-center">0-39</td><td class="text-center">F</td><td>FAIL</td><td class="text-center"><span class="badge grade-F">FAIL</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>IMPORTANT NOTES
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item border-0 px-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        This is an official school document
+                    </li>
+                    <li class="list-group-item border-0 px-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Grades are based on cumulative assessments
+                    </li>
+                    <li class="list-group-item border-0 px-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Position is within Form {{ student.form }}
+                    </li>
+                    <li class="list-group-item border-0 px-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Contact teachers for grade clarification
+                    </li>
+                    <li class="list-group-item border-0 px-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Keep this report for your records
+                    </li>
+                </ul>
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> Report cards must be signed by parent/guardian and returned to school.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation & Actions -->
+<div class="d-flex justify-content-between mb-4">
+    <div>
+        <a href="{% url 'grades:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+        <a href="{% url 'grades:student_profile' %}" class="btn btn-outline-primary ms-2">
+            <i class="bi bi-person me-1"></i>View Profile
+        </a>
+    </div>
+    
+    <div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+        <i class="bi bi-printer me-1"></i>Print Report
+    </button>
+    <a href="{% url 'grades:download_report_pdf' %}?term={{ term }}" class="btn btn-outline-success">
+        <i class="bi bi-download me-1"></i>Download PDF
+    </a>
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-arrow-repeat me-1"></i>Change Term
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="?term=T1">Term 1</a></li>
+            <li><a class="dropdown-item" href="?term=T2">Term 2</a></li>
+            <li><a class="dropdown-item" href="?term=T3">Term 3</a></li>
+        </ul>
+    </div>
+</div>
+</div>
+
+<!-- Report Footer -->
+<div class="text-center text-muted small mt-4">
+    <hr>
+    <p class="mb-1">
+        <i class="bi bi-shield-check me-1"></i>
+        <strong>Fortune Seekers Secondary School</strong> • Academic Affairs Department
+    </p>
+    <p class="mb-0">
+        This document was generated electronically on {% now "F j, Y" %} and is valid without signature
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add term selector functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Highlight current term in selector
+        const currentTerm = '{{ term }}';
+        document.querySelectorAll('.btn-term').forEach(btn => {
+            if (btn.getAttribute('href').includes(`term=${currentTerm}`)) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Add print functionality with better formatting
+        const printBtn = document.querySelector('button[onclick="window.print()"]');
+        if (printBtn) {
+            printBtn.addEventListener('click', function() {
+                // Optional: You can add print-specific styles here
+                window.print();
+            });
+        }
+        
+        // Animate summary cards
+        const summaryCards = document.querySelectorAll('.summary-card');
+        summaryCards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.classList.add('animate__animated', 'animate__fadeInUp');
+        });
+    });
+</script>
+{% endblock %}

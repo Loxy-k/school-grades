@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Class Ranking - {{ form_display }} {{ term_display }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1e3c72;
+        }
+        
+        .school-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-bottom: 5px;
+        }
+        
+        .report-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #2a5298;
+            margin-bottom: 5px;
+        }
+        
+        .report-info {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 8px;
+        }
+        
+        th {
+            background-color: #1e3c72;
+            color: white;
+            padding: 6px 4px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #1e3c72;
+        }
+        
+        td {
+            padding: 4px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        
+        .position-col {
+            width: 30px;
+            font-weight: bold;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
+        
+        .name-col {
+            width: 150px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .score-pass {
+            background-color: #d4edda;
+        }
+        
+        .score-fail {
+            background-color: #f8d7da;
+        }
+        
+        .score-absent {
+            background-color: #e9ecef;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .subject-col {
+            width: 60px;
+        }
+        
+        .position-1 { color: #ffd700; }
+        .position-2 { color: #c0c0c0; }
+        .position-3 { color: #cd7f32; }
+        
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+            font-size: 8px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .legend {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            font-size: 8px;
+        }
+        
+        .legend-item {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        
+        .summary-box {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="school-name">FORTUNE SEEKERS SECONDARY SCHOOL</div>
+        <div class="report-title">CLASS RANKING REPORT</div>
+        <div class="report-info">
+            {{ form_display }} | {{ term_display }} | Generated: {{ generated_date }}
+        </div>
+    </div>
+    
+    <div class="summary-box">
+        <strong>Summary:</strong> {{ total_students }} students | {{ subjects|length }} subjects | 
+        Program: {% if is_senior %}MSCE (Senior){% else %}JCE (Junior){% endif %}
+    </div>
+    
+    <div class="legend">
+        <span class="legend-item">
+            <span style="background-color: #d4edda; padding: 2px 8px; border-radius: 2px;">Passed</span> ≥50%
+        </span>
+        <span class="legend-item">
+            <span style="background-color: #f8d7da; padding: 2px 8px; border-radius: 2px;">Failed</span> <50%
+        </span>
+        <span class="legend-item">
+            <span style="background-color: #e9ecef; padding: 2px 8px; border-radius: 2px; font-style: italic;">AB</span> Absent
+        </span>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+               <th class="position-col">Pos</th>
+               <th class="name-col">Student Name & ID</th>
+               <th>Class/Stream</th>  <!-- Added column -->
+               <th>Average</th>
+               <th>Passed</th>
+               {% for subject in subjects %}
+               <th class="subject-col">{{ subject.name|truncatechars:12 }}</th>
+               {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in students_data %}
+            <tr>
+               <td class="position-col position-{{ forloop.counter }}">
+                   {% if forloop.counter == 1 %}🥇
+                   {% elif forloop.counter == 2 %}🥈
+                   {% elif forloop.counter == 3 %}🥉
+                   {% else %}{{ forloop.counter }}
+                   {% endif %}
+              </td>
+            <td class="name-col">
+                {{ data.student.last_name }}, {{ data.student.first_name }}<br>
+                <small>{{ data.student.student_id }}</small>
+            </td>
+         <td>
+            {{ data.student.get_form_display }}
+            {% if data.student.stream != 'NONE' %}
+            <br><small>{{ data.student.get_stream_display }}</small>
+            {% endif %}
+         </td>
+                <td>{{ data.avg_score|floatformat:1 }}%</td>
+                <td>{{ data.passed_count }}/{{ subjects|length }}</td>
+                {% for score in data.subject_scores %}
+                <td class="{% if score.score is None %}score-absent{% elif score.passed %}score-pass{% else %}score-fail{% endif %}">
+                    {{ score.display }}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Fortune Seekers Secondary School - Academic Affairs Department<br>
+        This is an official document. Report ID: {{ form }}-{{ term }}-{{ generated_date|date:"YmdHis" }}
+    </div>
+</body>
+</html>

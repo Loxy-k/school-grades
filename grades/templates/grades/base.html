@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Fortune Seekers Secondary School{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <!-- Custom CSS for school theme -->
+    <style>
+        :root {
+            --school-primary: #1e3c72;
+            --school-secondary: #2a5298;
+            --school-accent: #ff6b35;
+        }
+        
+        .school-navbar {
+            background: linear-gradient(135deg, var(--school-primary) 0%, var(--school-secondary) 100%);
+        }
+        
+        .school-btn-primary {
+            background-color: var(--school-primary);
+            border-color: var(--school-primary);
+        }
+        
+        .school-btn-primary:hover {
+            background-color: var(--school-secondary);
+            border-color: var(--school-secondary);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+        
+        .grading-key {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            border-left: 4px solid var(--school-accent);
+        }
+        
+        /* ====== STREAM-SPECIFIC CSS ====== */
+        /* Stream badge styles */
+        .stream-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .stream-science {
+            background-color: #3498db;
+            color: white;
+            border: 1px solid #2980b9;
+        }
+        
+        .stream-humanities {
+            background-color: #9b59b6;
+            color: white;
+            border: 1px solid #8e44ad;
+        }
+        
+        /* Form card styles for admin dashboard */
+        .form-science {
+            border-left: 4px solid #3498db;
+            background: linear-gradient(to right, rgba(52, 152, 219, 0.05), transparent);
+        }
+        
+        .form-humanities {
+            border-left: 4px solid #9b59b6;
+            background: linear-gradient(to right, rgba(155, 89, 182, 0.05), transparent);
+        }
+        
+        .form-junior {
+            border-left: 4px solid #2ecc71;
+            background: linear-gradient(to right, rgba(46, 204, 113, 0.05), transparent);
+        }
+        
+        /* Stream-specific text colors */
+        .text-stream-science {
+            color: #3498db;
+        }
+        
+        .text-stream-humanities {
+            color: #9b59b6;
+        }
+        
+        /* Stream-specific background colors */
+        .bg-stream-science-light {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .bg-stream-humanities-light {
+            background-color: rgba(155, 89, 182, 0.1);
+        }
+        
+        /* Stream icon colors */
+        .stream-icon-science {
+            color: #3498db;
+        }
+        
+        .stream-icon-humanities {
+            color: #9b59b6;
+        }
+        
+        /* Form-specific colors in dropdowns and selects */
+        .form-option-science {
+            color: #3498db;
+        }
+        
+        .form-option-humanities {
+            color: #9b59b6;
+        }
+        
+        /* Progress bar colors for streams */
+        .progress-bar-science {
+            background-color: #3498db;
+        }
+        
+        .progress-bar-humanities {
+            background-color: #9b59b6;
+        }
+        
+        /* Table row highlighting for streams */
+        tr.stream-science-highlight {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        tr.stream-humanities-highlight {
+            background-color: rgba(155, 89, 182, 0.05);
+        }
+        
+        /* Stream card headers */
+        .card-header-science {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .card-header-humanities {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        /* Badge variants for streams */
+        .badge-stream-science {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .badge-stream-humanities {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        /* Alert variants for streams */
+        .alert-stream-science {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: #3498db;
+            color: #2c3e50;
+        }
+        
+        .alert-stream-humanities {
+            background-color: rgba(155, 89, 182, 0.1);
+            border-color: #9b59b6;
+            color: #2c3e50;
+        }
+        
+        /* Stream filter pills */
+        .stream-filter-pill {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .stream-filter-pill.active {
+            font-weight: 600;
+        }
+        
+        .stream-filter-pill.science {
+            background-color: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+        
+        .stream-filter-pill.science.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .stream-filter-pill.humanities {
+            background-color: rgba(155, 89, 182, 0.2);
+            border: 1px solid #9b59b6;
+            color: #9b59b6;
+        }
+        
+        .stream-filter-pill.humanities.active {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        /* Stream legend for charts/graphs */
+        .stream-legend {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stream-legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+        
+        .stream-legend-color.science {
+            background-color: #3498db;
+        }
+        
+        .stream-legend-color.humanities {
+            background-color: #9b59b6;
+        }
+        
+        /* Responsive adjustments for stream badges */
+        @media (max-width: 768px) {
+            .stream-badge {
+                font-size: 0.7rem;
+                padding: 0.2rem 0.4rem;
+            }
+            
+            .stream-filter-pill {
+                padding: 0.2rem 0.6rem;
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* Hover effects for stream items */
+        .stream-item-hover:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Animation for stream transitions */
+        @keyframes stream-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+        
+        @keyframes stream-pulse-humanities {
+            0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
+        }
+        
+        .stream-pulse-science {
+            animation: stream-pulse 2s infinite;
+        }
+        
+        .stream-pulse-humanities {
+            animation: stream-pulse-humanities 2s infinite;
+        }
+        
+        /* Print styles for stream information */
+        @media print {
+            .stream-badge {
+                background-color: #f0f0f0 !important;
+                color: #333 !important;
+                border: 1px solid #ccc !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .form-science, .form-humanities, .form-junior {
+                background: none !important;
+                border-left: 2px solid #ccc !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark school-navbar shadow">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'grades:home' %}">
+                <i class="bi bi-mortarboard-fill me-2"></i>
+                <div>
+                    <span class="fw-bold">Fortune Seekers</span><br>
+                    <small class="opacity-75">Secondary School</small>
+                </div>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'grades:home' %}">
+                            <i class="bi bi-house-door"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-megaphone"></i> Announcements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-calendar-event"></i> Calendar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-telephone"></i> Contact
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/" target="_blank">
+                            <i class="bi bi-gear"></i> Admin
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-outline-light btn-sm ms-2" href="{% url 'grades:student_login' %}">
+                            <i class="bi bi-box-arrow-in-right"></i> Student Login
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container py-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% block content %}
+        <!-- Page content will be inserted here -->
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="bi bi-mortarboard"></i> Fortune Seekers Secondary</h5>
+                    <p class="text-light opacity-75">
+                        Empowering students through quality education and character building.<br>
+                        Preparing future leaders since 1995.
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h6>Quick Links</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'grades:home' %}" class="text-white text-decoration-none">Home</a></li>
+                        <li><a href="{% url 'grades:student_login' %}" class="text-white text-decoration-none">Student Portal</a></li>
+                        <li><a href="/admin/" class="text-white text-decoration-none">Admin Panel</a></li>
+                    </ul>
+                    <p class="text-light opacity-75 mt-3">
+                        &copy; {% now "Y" %} Fortune Seekers Secondary School<br>
+                        <small>All rights reserved</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

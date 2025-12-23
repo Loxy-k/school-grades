@@ -1,0 +1,264 @@
+
+{% extends 'grades/base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .quick-action-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .quick-action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Header -->
+<!-- In the dashboard, if you show student info -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-person-circle me-2"></i>Welcome, {{ student.first_name }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Full Name:</strong> {{ student.first_name }} {{ student.last_name }}</p>
+                <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Class:</strong> {{ student.get_form_display }}
+                    {% if student.stream != 'NONE' %}
+                    <span class="badge 
+                        {% if student.stream == 'SCIENCE' %}bg-info
+                        {% else %}bg-warning{% endif %} ms-2">
+                        {{ student.get_stream_display }}
+                    </span>
+                    {% endif %}
+                </p>
+                <p><strong>Program:</strong> 
+                    <span class="badge 
+                        {% if student.is_senior %}bg-success{% else %}bg-warning{% endif %}">
+                        {% if student.is_senior %}Senior (MSCE){% else %}Junior (JCE){% endif %}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+                    <!-- Add this in dashboard.html after the Welcome Header section -->
+{% if user.profile.can_print_reports %}
+<div class="alert alert-info mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle display-6 me-3"></i>
+        <div>
+            <h5 class="mb-2">Teacher/Admin Access Available</h5>
+            <p class="mb-2">You can print report cards for all students. Visit the admin dashboard to generate bulk reports.</p>
+            <a href="{% url 'grades:admin_dashboard' %}" class="btn btn-info">
+                <i class="bi bi-printer me-1"></i> Print Student Reports
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+                    <div class="col-md-4 text-md-end">
+                        <div class="bg-white text-dark rounded-pill px-3 py-2 d-inline-block">
+                            <i class="bi bi-calendar-check text-primary me-1"></i>
+                            <span id="current-date"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h3 class="mb-4 border-bottom pb-2">
+            <i class="bi bi-lightning-charge-fill text-warning me-2"></i>Quick Actions
+        </h3>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card quick-action-card h-100 border-primary">
+            <div class="card-body text-center p-4">
+                <div class="bg-primary bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-journal-text display-4 text-primary"></i>
+                </div>
+                <h4 class="card-title">View Grades</h4>
+                <p class="card-text text-muted">Check your academic performance, subject rankings, and term results.</p>
+                <a href="{% url 'grades:student_grades' %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-eye me-1"></i>View Grades
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card quick-action-card h-100 border-success">
+            <div class="card-body text-center p-4">
+                <div class="bg-success bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-person-badge display-4 text-success"></i>
+                </div>
+                <h4 class="card-title">My Profile</h4>
+                <p class="card-text text-muted">View and update your personal information and academic details.</p>
+                <a href="{% url 'grades:student_profile' %}" class="btn btn-success mt-2">
+                    <i class="bi bi-person me-1"></i>View Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card quick-action-card h-100 border-danger">
+            <div class="card-body text-center p-4">
+                <div class="bg-danger bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-box-arrow-right display-4 text-danger"></i>
+                </div>
+                <h4 class="card-title">Log Out</h4>
+                <p class="card-text text-muted">Securely log out from your student account when finished.</p>
+                <a href="{% url 'grades:student_logout' %}" class="btn btn-danger mt-2">
+                    <i class="bi bi-power me-1"></i>Log Out
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Academic Summary -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>Academic Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="p-3 border rounded">
+                            <h3 class="text-primary mb-1">-</h3>
+                            <p class="text-muted mb-0 small">Current GPA</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="p-3 border rounded">
+                            <h3 class="text-success mb-1">-</h3>
+                            <p class="text-muted mb-0 small">Subjects Passed</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="p-3 border rounded">
+                            <h3 class="text-info mb-1">-</h3>
+                            <p class="text-muted mb-0 small">Attendance %</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="p-3 border rounded">
+                            <h3 class="text-warning mb-1">-</h3>
+                            <p class="text-muted mb-0 small">Class Position</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Complete data will be available when grades are published for the current term.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item border-0 px-0">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-person-check text-success"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-0">Login Successful</h6>
+                                <small class="text-muted">Just now</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-group-item border-0 px-0">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-info-circle text-info"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-0">Welcome to Student Portal</h6>
+                                <small class="text-muted">First login this session</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{% url 'grades:student_grades' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-right me-1"></i>Check Latest Grades
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Help -->
+<div class="card border-0 bg-light mt-4">
+    <div class="card-body text-center">
+        <h6 class="card-title mb-3">
+            <i class="bi bi-question-circle text-primary me-2"></i>Need Help?
+        </h6>
+        <p class="card-text mb-3 text-muted">
+            If you encounter any issues or have questions about your academic information, please contact your class teacher or school administration.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="#" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-envelope me-1"></i>Email Support
+            </a>
+            <a href="#" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-telephone me-1"></i>Call Office
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Display current date
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options);
+    
+    // Add some interactive effects
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add animation to quick action cards
+        const cards = document.querySelectorAll('.quick-action-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.classList.add('animate__animated', 'animate__fadeInUp');
+        });
+    });
+</script>
+{% endblock %}

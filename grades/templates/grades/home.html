@@ -1,0 +1,189 @@
+{% extends 'grades/base.html' %}
+
+{% block title %}Welcome - Fortune Seekers Secondary School{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section mb-5">
+    <div class="row align-items-center">
+        <div class="col-lg-7">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                Welcome to Fortune Seekers Secondary School
+            </h1>
+            <p class="lead mb-4">
+                Where we nurture excellence, build character, and prepare students 
+                for a successful future through quality education and holistic development.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'grades:student_login' %}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-box-arrow-in-right"></i> Student Login
+                </a>
+                <a href="#" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-info-circle"></i> Learn More
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-5 text-center">
+            <div class="p-4 rounded-3 shadow" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                <i class="bi bi-mortarboard display-1 text-primary mb-3"></i>
+                <h3 class="mb-3">Student Portal Access</h3>
+                <p class="mb-4">Login to access your grades, profile, and academic information</p>
+                <a href="{% url 'grades:student_login' %}" class="btn btn-primary w-100">
+                    <i class="bi bi-box-arrow-in-right"></i> Go to Student Portal
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Announcement Banner -->
+<div class="alert alert-info alert-dismissible fade show mb-5" role="alert">
+    <div class="d-flex">
+        <i class="bi bi-megaphone-fill display-6 me-3"></i>
+        <div>
+            <h5 class="alert-heading mb-2">Latest School Announcement</h5>
+            <p class="mb-2"><strong>New semester begins on January 5th.</strong> Parent-teacher meetings scheduled for February. Check your student portal for personalized information and updated class schedules.</p>
+            <small class="text-muted">Posted: December 15, 2023</small>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-5">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center h-100 card-hover">
+            <div class="card-body">
+                <i class="bi bi-people display-5 text-primary mb-2"></i>
+                <h3 class="card-title">850+</h3>
+                <p class="card-text text-muted">Students</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center h-100 card-hover">
+            <div class="card-body">
+                <i class="bi bi-person-badge display-5 text-success mb-2"></i>
+                <h3 class="card-title">45</h3>
+                <p class="card-text text-muted">Teachers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center h-100 card-hover">
+            <div class="card-body">
+                <i class="bi bi-award display-5 text-warning mb-2"></i>
+                <h3 class="card-title">98%</h3>
+                <p class="card-text text-muted">Pass Rate</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center h-100 card-hover">
+            <div class="card-body">
+                <i class="bi bi-building display-5 text-info mb-2"></i>
+                <h3 class="card-title">25+</h3>
+                <p class="card-text text-muted">Years Excellence</p>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add this in home.html after the Quick Stats section -->
+{% if user.is_authenticated and user.profile.can_print_reports %}
+<div class="alert alert-warning alert-dismissible fade show mb-5" role="alert">
+    <div class="d-flex">
+        <i class="bi bi-printer-fill display-6 me-3"></i>
+        <div>
+            <h5 class="alert-heading mb-2">Teacher/Admin Access</h5>
+            <p class="mb-2">You have permission to print student report cards. Access the admin dashboard to generate reports for entire classes.</p>
+            <a href="{% url 'grades:admin_dashboard' %}" class="btn btn-warning mt-2">
+                <i class="bi bi-speedometer2"></i> Go to Admin Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- Features Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h2 class="text-center mb-4"><i class="bi bi-stars"></i> What We Offer</h2>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="bg-primary bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-graph-up-arrow display-5 text-primary"></i>
+                </div>
+                <h4 class="card-title">Academic Excellence</h4>
+                <p class="card-text">Comprehensive JCE and MSCE programs with modern teaching methods and regular assessments.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="bg-success bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-laptop display-5 text-success"></i>
+                </div>
+                <h4 class="card-title">Digital Portal</h4>
+                <p class="card-text">Real-time access to grades, attendance, and academic progress through our student portal.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="bg-warning bg-opacity-10 rounded-circle p-3 d-inline-block mb-3">
+                    <i class="bi bi-person-hearts display-5 text-warning"></i>
+                </div>
+                <h4 class="card-title">Holistic Development</h4>
+                <p class="card-text">Sports, arts, and leadership programs to develop well-rounded individuals.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links Section -->
+<div class="card">
+    <div class="card-header bg-light">
+        <h4 class="mb-0"><i class="bi bi-link-45deg"></i> Quick Access Links</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-center p-3 border rounded">
+                    <i class="bi bi-journal-text display-6 text-primary me-3"></i>
+                    <div>
+                        <h5 class="mb-1">Student Portal</h5>
+                        <p class="mb-0 text-muted">Access grades and academic info</p>
+                        <a href="{% url 'grades:student_login' %}" class="btn btn-sm btn-primary mt-2">Login Here</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-center p-3 border rounded">
+                    <i class="bi bi-calendar-check display-6 text-success me-3"></i>
+                    <div>
+                        <h5 class="mb-1">School Calendar</h5>
+                        <p class="mb-0 text-muted">Important dates and events</p>
+                        <a href="#" class="btn btn-sm btn-success mt-2">View Calendar</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-center p-3 border rounded">
+                    <i class="bi bi-telephone display-6 text-info me-3"></i>
+                    <div>
+                        <h5 class="mb-1">Contact Us</h5>
+                        <p class="mb-0 text-muted">Get in touch with school admin</p>
+                        <a href="#" class="btn btn-sm btn-info mt-2">Contact</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Report Card - {{ student.first_name }} {{ student.last_name }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.2;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+        }
+        
+        /* School Header - Compact */
+        .school-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #1e3c72;
+        }
+        
+        .school-logo-placeholder {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 8px;
+            background-color: #f0f0f0;
+            border: 1px dashed #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 9px;
+            float: left;
+            margin-right: 15px;
+        }
+        
+        .school-header-content {
+            overflow: hidden;
+        }
+        
+        .school-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+        
+        .school-motto {
+            font-size: 11px;
+            color: #2a5298;
+            font-style: italic;
+            margin: 2px 0;
+        }
+        
+        .school-address {
+            font-size: 9px;
+            color: #666;
+            margin: 0;
+            line-height: 1.1;
+        }
+        
+        .report-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #dc3545;
+            margin: 5px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Student Info Section - Compact */
+        .student-info-section {
+            margin: 10px 0 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .info-item {
+            margin: 0;
+            line-height: 1.3;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #1e3c72;
+            font-size: 10px;
+        }
+        
+        .position-box {
+            grid-column: span 4;
+            text-align: center;
+            padding: 8px;
+            background-color: #1e3c72;
+            color: white;
+            border-radius: 3px;
+            margin-top: 8px;
+        }
+        
+        /* Grades Table - Compact */
+        .grades-section {
+            margin: 15px 0;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-bottom: 8px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #1e3c72;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 10px;
+        }
+        
+        th {
+            background-color: #1e3c72;
+            color: white;
+            padding: 6px 5px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #1e3c72;
+            font-size: 10px;
+        }
+        
+        td {
+            padding: 5px;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+            line-height: 1.2;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .subject-col {
+            font-weight: bold;
+            width: 30%;
+        }
+        
+        .score-col {
+            width: 12%;
+            text-align: center;
+        }
+        
+        .grade-col {
+            width: 12%;
+            text-align: center;
+        }
+        
+        .comment-col {
+            width: 46%;
+        }
+        
+        .grade-badge {
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: bold;
+            font-size: 9px;
+            display: inline-block;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        /* Grade Colors */
+        .grade-A { background-color: #28a745; color: white; }
+        .grade-B { background-color: #17a2b8; color: white; }
+        .grade-C { background-color: #ffc107; color: #212529; }
+        .grade-D { background-color: #fd7e14; color: white; }
+        .grade-F { background-color: #dc3545; color: white; }
+        
+        .grade-1 { background-color: #28a745; color: white; }
+        .grade-2 { background-color: #28a745; color: white; }
+        .grade-3 { background-color: #20c997; color: white; }
+        .grade-4 { background-color: #17a2b8; color: white; }
+        .grade-5 { background-color: #17a2b8; color: white; }
+        .grade-6 { background-color: #17a2b8; color: white; }
+        .grade-7 { background-color: #6f42c1; color: white; }
+        .grade-8 { background-color: #6f42c1; color: white; }
+        .grade-9 { background-color: #dc3545; color: white; }
+        
+        /* Quick Summary - Minimal */
+        .quick-summary {
+            margin: 12px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        
+        .summary-items {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+        
+        .summary-item {
+            padding: 5px;
+        }
+        
+        .summary-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin: 2px 0;
+        }
+        
+        .summary-label {
+            font-size: 9px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        /* Dynamic color for result value */
+        .result-pass {
+            color: #155724;
+        }
+        
+        .result-fail {
+            color: #721c24;
+        }
+        
+        /* Grading Key Section - Compact */
+        .grading-key-section {
+            margin: 15px 0;
+        }
+        
+        .key-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            margin-top: 8px;
+        }
+        
+        .key-table th {
+            background-color: #495057;
+            padding: 5px;
+            font-size: 9px;
+        }
+        
+        .key-table td {
+            padding: 4px 5px;
+        }
+        
+        .key-section-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        /* Footer - Compact */
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+            font-size: 8px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .signature-area {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+        
+        .signature-line {
+            border-top: 1px solid #333;
+            width: 70%;
+            margin: 3px auto 0;
+            padding-top: 3px;
+            font-size: 8px;
+        }
+        
+        /* Compact layout helpers */
+        .compact-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .text-small {
+            font-size: 9px;
+        }
+        
+        .text-xsmall {
+            font-size: 8px;
+        }
+        
+        .mb-5 { margin-bottom: 5px; }
+        .mb-8 { margin-bottom: 8px; }
+        .mt-5 { margin-top: 5px; }
+        .mt-8 { margin-top: 8px; }
+        .pt-5 { padding-top: 5px; }
+    </style>
+</head>
+<body>
+    <!-- School Header - Compact -->
+    <div class="school-header">
+        <div class="school-logo-placeholder">
+            LOGO
+        </div>
+        
+        <div class="school-header-content">
+            <div class="school-name">FORTUNE SEEKERS SECONDARY SCHOOL</div>
+            <div class="school-motto">"Seeking Excellence in Education"</div>
+            <div class="school-address">P.O. Box 1234, City Name, Country | Tel: +265 123 456 789</div>
+        </div>
+        
+        <div style="clear: both;"></div>
+        
+        <div class="report-title">ACADEMIC REPORT CARD</div>
+        <div style="font-size: 10px; color: #666; margin-top: 2px;">
+            OFFICIAL ACADEMIC TRANSCRIPT
+        </div>
+    </div>
+    
+    <!-- Student Information - Compact -->
+    <div class="student-info-section">
+         <div class="info-grid">
+        <div class="info-item">
+            <span class="info-label">Student Name:</span><br>
+            {{ student.first_name }} {{ student.last_name }}
+        </div>
+        <div class="info-item">
+            <span class="info-label">Student ID:</span><br>
+            {{ student.student_id }}
+        </div>
+        <div class="info-item">
+            <span class="info-label">Form:</span><br>
+            {{ student.get_form_display }}
+            {% if student.stream != 'NONE' %}
+            <br><small>({{ student.get_stream_display }} Stream)</small>
+            {% endif %}
+        </div>
+        <div class="info-item">
+            <span class="info-label">Term:</span><br>
+            {{ term_display }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Program:</span><br>
+                {% if student.is_senior %}MSCE{% else %}JCE{% endif %}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date:</span><br>
+                {{ current_date }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Subjects:</span><br>
+                {{ grades|length }} Total
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span><br>
+                {% if student.is_senior %}Senior{% else %}Junior{% endif %}
+            </div>
+            
+            <div class="position-box">
+                <div style="font-size: 10px; margin-bottom: 2px;">CLASS POSITION</div>
+                <div style="font-size: 24px; font-weight: bold;">
+                    {% if overall_position %}
+                        {{ overall_position }}
+                        {% if overall_position == 1 %}
+                        <span style="font-size: 14px;">🏆</span>
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+                <div style="font-size: 9px; margin-top: 2px;">
+                    Form {{ student.form }} Students
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Academic Performance Section -->
+    <div class="grades-section">
+        <div class="section-title">ACADEMIC PERFORMANCE - {{ term_display|upper }}</div>
+        
+        {% if grades %}
+        <table>
+            <thead>
+                <tr>
+                    <th class="subject-col">SUBJECT</th>
+                    <th class="score-col">SCORE</th>
+                    <th class="grade-col">GRADE</th>
+                    <th class="comment-col">COMMENTS / REMARKS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in grades %}
+                <tr>
+                    <td class="subject-col">{{ g.subject.name|upper }}</td>
+                    <td class="score-col">{{ g.score|floatformat:1 }}</td>
+                    <td class="grade-col">
+                        <span class="grade-badge grade-{{ g.short_grade }}">
+                            {{ g.short_grade }}
+                        </span>
+                    </td>
+                    <td class="comment-col text-small">{{ g.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 15px; color: #666; font-size: 10px;">
+            <p>No grades recorded for {{ term_display }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Summary - Minimal -->
+    <div class="quick-summary">
+        <div class="summary-items">
+            <div class="summary-item">
+                <div class="summary-value">{{ passed_count }}/{{ grades|length }}</div>
+                <div class="summary-label">Passed</div>
+            </div>
+            
+            <div class="summary-item">
+                <div class="summary-value {% if overall_result == 'PASS' %}result-pass{% else %}result-fail{% endif %}">
+                    {{ overall_result }}
+                </div>
+                <div class="summary-label">Final Result</div>
+            </div>
+            
+            <div class="summary-item">
+                <div class="summary-value">
+                    {% if overall_position %}
+                        {{ overall_position }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+                <div class="summary-label">Position</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Grading Key / Criteria - Compact -->
+    <div class="grading-key-section">
+        <div class="section-title">GRADING CRITERIA (KEY)</div>
+        
+        {% if student.is_senior %}
+        <!-- MSCE Grading System - Compact -->
+        <div class="key-section-title text-center mb-5">MSCE GRADING SYSTEM</div>
+        <table class="key-table">
+            <thead>
+                <tr>
+                    <th>MARKS</th>
+                    <th>POINT</th>
+                    <th>GRADE</th>
+                    <th>DESCRIPTION</th>
+                    <th>STATUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>80-100</td><td>1</td><td><span class="grade-badge grade-1">1</span></td><td>DISTINCTION</td><td>PASS</td></tr>
+                <tr><td>70-79</td><td>2</td><td><span class="grade-badge grade-2">2</span></td><td>DISTINCTION</td><td>PASS</td></tr>
+                <tr><td>65-69</td><td>3</td><td><span class="grade-badge grade-3">3</span></td><td>STRONG CREDIT</td><td>PASS</td></tr>
+                <tr><td>60-64</td><td>4</td><td><span class="grade-badge grade-4">4</span></td><td>CREDIT</td><td>PASS</td></tr>
+                <tr><td>55-59</td><td>5</td><td><span class="grade-badge grade-5">5</span></td><td>CREDIT</td><td>PASS</td></tr>
+                <tr><td>50-54</td><td>6</td><td><span class="grade-badge grade-6">6</span></td><td>CREDIT</td><td>PASS</td></tr>
+                <tr><td>45-49</td><td>7</td><td><span class="grade-badge grade-7">7</span></td><td>PASS</td><td>PASS</td></tr>
+                <tr><td>40-44</td><td>8</td><td><span class="grade-badge grade-8">8</span></td><td>PASS</td><td>PASS</td></tr>
+                <tr style="background-color: #f8d7da;"><td>0-39</td><td>9</td><td><span class="grade-badge grade-9">9</span></td><td>FAIL</td><td>FAIL</td></tr>
+            </tbody>
+        </table>
+        
+        {% else %}
+        <!-- JCE Grading System - Compact -->
+        <div class="key-section-title text-center mb-5">JCE GRADING SYSTEM</div>
+        <table class="key-table">
+            <thead>
+                <tr>
+                    <th>MARKS</th>
+                    <th>GRADE</th>
+                    <th>DESCRIPTION</th>
+                    <th>STATUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>80-100</td><td><span class="grade-badge grade-A">A</span></td><td>EXCELLENT</td><td>PASS</td></tr>
+                <tr><td>70-79</td><td><span class="grade-badge grade-B">B</span></td><td>VERY GOOD</td><td>PASS</td></tr>
+                <tr><td>60-69</td><td><span class="grade-badge grade-C">C</span></td><td>GOOD</td><td>PASS</td></tr>
+                <tr><td>50-59</td><td><span class="grade-badge grade-D">D</span></td><td>PASS</td><td>PASS</td></tr>
+                <tr style="background-color: #f8d7da;"><td>0-49</td><td><span class="grade-badge grade-F">F</span></td><td>FAIL</td><td>FAIL</td></tr>
+            </tbody>
+        </table>
+        {% endif %}
+        
+        <div style="font-size: 8px; color: #666; margin-top: 8px; text-align: center;">
+            <strong>Note:</strong> Requires at least 6 passed subjects including English for certification.
+        </div>
+    </div>
+    
+    <!-- Footer - Compact -->
+    <div class="footer">
+        <div class="signature-area">
+            <div>
+                <div>_______________</div>
+                <div class="signature-line">Class Teacher</div>
+            </div>
+            <div>
+                <div>_______________</div>
+                <div class="signature-line">Academic Head</div>
+            </div>
+            <div>
+                <div>_______________</div>
+                <div class="signature-line">Principal</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 10px; font-size: 7px; color: #999; line-height: 1.1;">
+            Document ID: {{ student.student_id }}-{{ term }}-{{ current_date|date:"Ymd" }}<br>
+            Generated electronically by Fortune Seekers Secondary School<br>
+            Valid without signature stamp | Keep for your records
+        </div>
+    </div>
+</body>
+</html>

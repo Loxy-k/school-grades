@@ -1,0 +1,8 @@
+# Django Settings
+SECRET_KEY=your-production-secret-key-here
+DEBUG=False
+DATABASE_URL=postgresql://user:password@host:port/database
+
+# Railway Specific
+DJANGO_SECRET_KEY=your-railway-secret-key
+DJANGO_DEBUG=False

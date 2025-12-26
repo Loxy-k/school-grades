@@ -1,0 +1,8 @@
+{
+  "services": {
+    "postgresql": {
+      "type": "postgresql",
+      "persistentStorage": true
+    }
+  }
+}

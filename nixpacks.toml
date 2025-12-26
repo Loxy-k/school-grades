@@ -1,2 +1,13 @@
 [phases.setup]
-aptPkgs = ["python3-dev", "libpq-dev", "gcc"]
+aptPkgs = [
+    "python3-dev", 
+    "libpq-dev", 
+    "gcc",
+    "libpango-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangocairo-1.0-0",
+    "libgdk-pixbuf-2.0-0",
+    "libffi-dev",
+    "shared-mime-info",
+    "libcairo2-dev"
+]

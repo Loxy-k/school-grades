@@ -58,11 +58,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'school_grades.wsgi.application'
 
-# Database - FIXED: Removed SQLite fallback for production
+# Database - FIXED: Correct logic for Railway build and runtime
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+# Priority 1: Use DATABASE_URL if it's set (for Railway)
 if DATABASE_URL:
-    # Production: Use PostgreSQL from Railway
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -70,19 +70,17 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
-else:
-    # Local development: Use SQLite (you must set DATABASE_URL in .env for local)
-    # For safety, we'll keep SQLite for local but make it explicit
-    if DEBUG:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
+# Priority 2: If DEBUG is True (local development or build phase), use SQLite
+elif DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
-    else:
-        # Production should fail if DATABASE_URL is missing
-        raise ImproperlyConfigured("DATABASE_URL environment variable not set for production.")
+    }
+# Priority 3: If DEBUG is False (PRODUCTION) and DATABASE_URL is missing, THAT'S AN ERROR
+else:
+    raise ImproperlyConfigured("DATABASE_URL environment variable not set for production.")
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = []

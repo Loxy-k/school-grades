@@ -28,17 +28,20 @@ def student_stream_info(request):
         except Student.DoesNotExist:
             # User is not a student
             context['is_student_user'] = False
-            
-            try:
-                # Check for teacher/admin profile
-                profile = UserProfile.objects.get(user=request.user)
-                context.update({
-                    'user_profile': profile,
-                    'user_role': profile.get_role_display(),
-                    'is_teacher_user': profile.is_teacher,
-                    'is_admin_user': profile.is_admin,
-                })
-            except UserProfile.DoesNotExist:
-                pass
+        
+        # ALWAYS try to get user profile for authenticated users
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            context['user_profile'] = profile
+            context['user_role'] = profile.get_role_display()
+            context['is_teacher_user'] = profile.is_teacher
+            context['is_admin_user'] = profile.is_admin
+        except UserProfile.DoesNotExist:
+            # Create profile if it doesn't exist
+            profile = UserProfile.objects.create(user=request.user)
+            context['user_profile'] = profile
+            context['user_role'] = profile.get_role_display()
+            context['is_teacher_user'] = profile.is_teacher
+            context['is_admin_user'] = profile.is_admin
     
     return context

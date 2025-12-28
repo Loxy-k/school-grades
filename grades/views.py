@@ -7,6 +7,7 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.db.models import Avg, Q
+from weasyprint import HTML  # ✅ FIXED: Import at module level, not inside function
 import os
 import io
 from zipfile import ZipFile
@@ -14,10 +15,6 @@ from io import BytesIO
 
 # Import your models
 from .models import Student, Subject, Grade, UserProfile
-
-# Set WeasyPrint DLL path at the module level
-os.environ['WEASYPRINT_DLL_DIRECTORIES'] = r'C:\Program Files\GTK3-Runtime Win64\bin'
-os.environ['PATH'] = r'C:\Program Files\GTK3-Runtime Win64\bin;' + os.environ.get('PATH', '')
 
 
 def _get_logged_student(request):
@@ -371,7 +368,6 @@ def can_print_reports(user):
 
 def generate_student_pdf(student, term, request=None):
     """Generate PDF for a single student (reusable function)."""
-    from weasyprint import HTML
     from weasyprint.text.fonts import FontConfiguration
     
     term_display = {'T1': 'Term 1', 'T2': 'Term 2', 'T3': 'Term 3'}.get(term, term)
@@ -487,7 +483,7 @@ def generate_student_pdf(student, term, request=None):
         
         # Generate PDF
         font_config = FontConfiguration()
-        html = HTML(string=html_string)
+        html = HTML(string=html_string)  # ✅ FIXED: HTML imported at module level
         pdf_bytes = html.write_pdf(font_config=font_config)
         
         return pdf_bytes
@@ -871,8 +867,6 @@ def download_class_ranking_pdf(request):
     }
     
     try:
-        from weasyprint import HTML
-        
         # Render PDF template
         html_string = render_to_string('grades/class_ranking_pdf.html', context)
         

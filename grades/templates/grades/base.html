@@ -302,48 +302,59 @@
                     <small class="opacity-75">Secondary School</small>
                 </div>
             </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
             <div class="collapse navbar-collapse" id="mainNavbar">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{% url 'grades:home' %}">
-                            <i class="bi bi-house-door"></i> Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-megaphone"></i> Announcements
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-calendar-event"></i> Calendar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-telephone"></i> Contact
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/" target="_blank">
-                            <i class="bi bi-gear"></i> Admin
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link btn btn-outline-light btn-sm ms-2" href="{% url 'grades:student_login' %}">
-                            <i class="bi bi-box-arrow-in-right"></i> Student Login
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+            <a class="nav-link active" href="{% url 'grades:home' %}">
+                <i class="bi bi-house-door"></i> Home
+            </a>
+        </li>
+        
+        <!-- Add Admin Dashboard link if user is teacher/admin -->
+        {% if user.is_authenticated and user_profile and user_profile.can_print_reports %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'grades:admin_dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Admin Dashboard
+            </a>
+        </li>
+        {% endif %}
+        
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="bi bi-megaphone"></i> Announcements
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="bi bi-calendar-event"></i> Calendar
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="bi bi-telephone"></i> Contact
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/admin/" target="_blank">
+                <i class="bi bi-gear"></i> Admin Panel
+            </a>
+        </li>
+        
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+            <a class="nav-link btn btn-outline-light btn-sm ms-2" href="{% url 'grades:student_logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link btn btn-outline-light btn-sm ms-2" href="{% url 'grades:student_login' %}">
+                <i class="bi bi-box-arrow-in-right"></i> Student Login
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
     <!-- Main Content -->
     <main class="container py-4">
         {% if messages %}
@@ -392,4 +403,5 @@
     
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

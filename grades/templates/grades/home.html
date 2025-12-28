@@ -89,7 +89,7 @@
     </div>
 </div>
 <!-- Add this in home.html after the Quick Stats section -->
-{% if user.is_authenticated and user.profile.can_print_reports %}
+{% if user.is_authenticated and user_profile and user_profile.can_print_reports %}
 <div class="alert alert-warning alert-dismissible fade show mb-5" role="alert">
     <div class="d-flex">
         <i class="bi bi-printer-fill display-6 me-3"></i>
@@ -186,4 +186,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %}

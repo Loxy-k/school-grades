@@ -1,8 +1,29 @@
 {
-  "services": {
-    "postgresql": {
-      "type": "postgresql",
-      "persistentStorage": true
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksConfig": {
+      "phases": {
+        "setup": {
+          "aptPkgs": [
+            "libpango-1.0-0",
+            "libpangoft2-1.0-0", 
+            "libpangocairo-1.0-0",
+            "libgdk-pixbuf-2.0-0",
+            "libcairo2",
+            "libgirepository-1.0-1",
+            "gir1.2-pango-1.0",
+            "libgobject-2.0-0",
+            "shared-mime-info",
+            "libffi-dev",
+            "libcairo2-dev",
+            "libxml2-dev"
+          ]
+        }
+      }
     }
+  },
+  "deploy": {
+    "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn school_grades.wsgi"
   }
 }
+

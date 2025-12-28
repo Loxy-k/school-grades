@@ -56,8 +56,8 @@
         </div>
     </div>
 </div>
-                    <!-- Add this in dashboard.html after the Welcome Header section -->
-{% if user.profile.can_print_reports %}
+   <!-- Replace the existing block with this: -->
+{% if user.is_authenticated and user_profile and user_profile.can_print_reports %}
 <div class="alert alert-info mb-4">
     <div class="d-flex align-items-center">
         <i class="bi bi-info-circle display-6 me-3"></i>
@@ -261,4 +261,5 @@
         });
     });
 </script>
+
 {% endblock %}

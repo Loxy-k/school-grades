@@ -14,7 +14,30 @@ from zipfile import ZipFile
 # Import your models
 from .models import Student, Subject, Grade
 
+# Add this helper function near the top of views.py
+def get_term_in_db_format(term_code):
+    """Convert URL term codes to database format."""
+    term_map = {
+        'T1': 'Term 1',
+        'T2': 'Term 2', 
+        'T3': 'Term 3',
+    }
+    # If it's already in database format, return as-is
+    if term_code in ['Term 1', 'Term 2', 'Term 3']:
+        return term_code
+    # Otherwise, map from code to database format
+    return term_map.get(term_code, 'Term 1')
 
+def get_term_display(term_code):
+    """Get display name for term."""
+    if term_code in ['Term 1', 'Term 2', 'Term 3']:
+        return term_code
+    term_map = {
+        'T1': 'Term 1',
+        'T2': 'Term 2', 
+        'T3': 'Term 3',
+    }
+    return term_map.get(term_code, 'Term 1')
 def _get_logged_student(request):
     """Helper function to get the logged-in student."""
     if request.user.is_authenticated:
@@ -565,6 +588,7 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 
 

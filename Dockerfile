@@ -26,10 +26,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 4. Copy your Django project
 COPY . .
 
-# 5. Run commands directly
+# 5. Run migrations, collect static files, and start Gunicorn
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
-    PORT=${PORT:-8000} && \
     gunicorn school_grades.wsgi:application \
         --bind 0.0.0.0:$PORT \
         --workers 3 \

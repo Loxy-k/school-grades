@@ -26,41 +26,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 4. Copy your Django project
 COPY . .
 
-# 5. Create a proper startup script file
-RUN echo '#!/bin/bash
-set -e
-
-echo "=========================================="
-echo "STARTING SCHOOL GRADES SYSTEM"
-echo "=========================================="
-
-# Debug: Show environment
-echo "Environment Variables:"
-echo "PORT: $PORT"
-if [ -n "$DATABASE_URL" ]; then
-    echo "DATABASE_URL: ${DATABASE_URL:0:50}..."
-else
-    echo "DATABASE_URL: NOT SET - Using SQLite"
-fi
-
-# Run migrations
-echo "Running migrations..."
-python manage.py migrate --noinput
-
-# Collect static files
-echo "Collecting static files..."
-python manage.py collectstatic --noinput
-
-# Start Gunicorn - use default port if PORT is not set
-PORT=${PORT:-8000}
-echo "Starting Gunicorn on port $PORT..."
-exec gunicorn school_grades.wsgi:application \
-    --bind 0.0.0.0:$PORT \
-    --workers 3 \
-    --timeout 120 \
-    --log-level info \
-    --access-logfile - \
-    --error-logfile -' > /start.sh && chmod +x /start.sh
-
-# 6. Run the startup script
-CMD ["/bin/bash", "/start.sh"]
+# 5. Run commands directly
+CMD python manage.py migrate --noinput && \
+    python manage.py collectstatic --noinput && \
+    PORT=${PORT:-8000} && \
+    gunicorn school_grades.wsgi:application \
+        --bind 0.0.0.0:$PORT \
+        --workers 3 \
+        --timeout 120 \
+        --log-level info \
+        --access-logfile - \
+        --error-logfile -

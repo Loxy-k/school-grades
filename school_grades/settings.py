@@ -1,12 +1,21 @@
 import os
+from pathlib import Path
 
 print("=" * 60)
 print("SETTINGS.PY - DEBUG INFO")
 print("=" * 60)
 print(f"DATABASE_URL: {'✅ SET' if os.environ.get('DATABASE_URL') else '❌ NOT SET'}")
+if os.environ.get('DATABASE_URL'):
+    print(f"DATABASE_URL value: {os.environ.get('DATABASE_URL')[:50]}...")
 print(f"PORT: {os.environ.get('PORT', 'NOT SET')}")
 print(f"DJANGO_SECRET_KEY: {'✅ SET' if os.environ.get('DJANGO_SECRET_KEY') else '❌ NOT SET'}")
+print(f"All env vars: {list(os.environ.keys())}")
 print("=" * 60)
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ... rest of your settings.py continues ...
 import dj_database_url
 from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -354,5 +363,6 @@ except Exception as e:
 print("="*60)
 print("Settings loaded successfully!")
 print("="*60 + "\n")
+
 
 

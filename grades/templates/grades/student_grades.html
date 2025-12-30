@@ -93,6 +93,13 @@
         color: white;
         border: 1px solid #2980b9;
     }
+    
+    .no-grades-card {
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 </style>
 {% endblock %}
 
@@ -159,6 +166,7 @@
     </div>
 </div>
 
+<!-- Term Selection -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <h5 class="mb-3">
@@ -181,16 +189,23 @@
     </div>
 </div>
 
+<!-- Subject Performance Section -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white">
         <h4 class="mb-0">
             <i class="bi bi-table me-2"></i>SUBJECT PERFORMANCE - {{ term_display }}
         </h4>
-        <p class="text-muted mb-0 small">Detailed results for all subjects in {{ student.get_form_display }}</p>
+        <p class="text-muted mb-0 small">
+            {% if has_grades %}
+                Showing {{ total_subjects }} subject{{ total_subjects|pluralize }} for {{ student.get_form_display }}
+            {% else %}
+                No grades recorded for {{ term_display }}
+            {% endif %}
+        </p>
     </div>
     
     <div class="card-body p-0">
-        {% if grades %}
+        {% if has_grades %}
         <div class="table-responsive">
             <table class="table table-hover grade-table mb-0">
                 <thead>
@@ -203,43 +218,52 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for g in grades %}
+                    {% for subject in subjects %}
+                    {% if subject.has_grade %}
                     <tr>
                         <td class="ps-4 fw-semibold">
-                            <i class="bi bi-book me-2"></i>{{ g.subject.name }}
+                            <i class="bi bi-book me-2"></i>{{ subject.name }}
                         </td>
                         <td class="text-center">
                             <span class="badge 
-                                {% if g.score >= 80 %}bg-success
-                                {% elif g.score >= 50 %}bg-primary
+                                {% if subject.score >= 80 %}bg-success
+                                {% elif subject.score >= 50 %}bg-primary
                                 {% else %}bg-danger{% endif %} 
                                 rounded-pill px-3 py-1">
-                                {{ g.score }}
+                                {{ subject.score|floatformat:1 }}
                             </span>
                         </td>
                         <td class="text-center">
-                            <span class="grade-badge grade-{{ g.short_grade }}">
-                                {{ g.short_grade }}
+                            {% if student.is_senior %}
+                            <span class="grade-badge grade-{{ subject.grade_display }}">
+                                {{ subject.grade_display }}
                             </span>
+                            {% else %}
+                            <span class="grade-badge grade-{{ subject.grade_display }}">
+                                {{ subject.grade_display }}
+                            </span>
+                            {% endif %}
                             <br>
-                            <small class="text-muted">{{ g.comment }}</small>
+                            <small class="text-muted">
+                                {{ subject.grade_obj.grade_label }}
+                            </small>
                         </td>
                         <td>
-                            {% if g.comment %}
-                                <small class="text-muted">{{ g.comment }}</small>
+                            {% if subject.teacher_name %}
+                                <small class="text-muted">Teacher: {{ subject.teacher_name }}</small>
                             {% else %}
                                 <small class="text-muted fst-italic">No comments provided</small>
                             {% endif %}
                         </td>
                         <td class="text-center pe-4">
-                            {% if g.position %}
+                            {% if subject.position %}
                                 <span class="badge 
-                                    {% if g.position == 1 %}bg-warning text-dark
-                                    {% elif g.position <= 5 %}bg-info
+                                    {% if subject.position == 1 %}bg-warning text-dark
+                                    {% elif subject.position <= 5 %}bg-info
                                     {% else %}bg-secondary{% endif %} 
                                     rounded-pill px-3">
-                                    {{ g.position }}
-                                    {% if g.position == 1 %}
+                                    {{ subject.position }}
+                                    {% if subject.position == 1 %}
                                     <i class="bi bi-trophy-fill ms-1"></i>
                                     {% endif %}
                                 </span>
@@ -252,33 +276,53 @@
                             {% endif %}
                         </td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <div class="text-center py-5">
-            <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
-            <h4 class="text-muted">NO GRADES RECORDED</h4>
-            <p class="text-muted">No grades available for {{ term_display }}.</p>
-            <div class="mt-3">
-                <div class="btn-group" role="group">
-                    <a href="?term=T1" class="btn btn-outline-primary">Check Term 1</a>
-                    <a href="?term=T2" class="btn btn-outline-primary">Check Term 2</a>
-                    <a href="?term=T3" class="btn btn-outline-primary">Check Term 3</a>
+        <div class="no-grades-card">
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                <h4 class="text-muted">NO GRADES RECORDED</h4>
+                <p class="text-muted mb-4">
+                    No grades available for {{ term_display }} in your subjects.
+                </p>
+                <div class="mt-3">
+                    <div class="btn-group" role="group">
+                        <a href="?term=T1" class="btn btn-outline-primary">
+                            <i class="bi bi-calendar-check me-1"></i>Check Term 1
+                        </a>
+                        <a href="?term=T2" class="btn btn-outline-primary">
+                            <i class="bi bi-calendar-check me-1"></i>Check Term 2
+                        </a>
+                        <a href="?term=T3" class="btn btn-outline-primary">
+                            <i class="bi bi-calendar-check me-1"></i>Check Term 3
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>
+                            If you believe there should be grades, please contact your form teacher 
+                            or the school administration.
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
         {% endif %}
     </div>
     
-    {% if grades %}
+    {% if has_grades %}
     <div class="card-footer bg-light">
         <div class="row">
             <div class="col-md-6">
                 <small class="text-muted">
                     <i class="bi bi-info-circle me-1"></i>
-                    Showing {{ grades|length }} subject{{ grades|length|pluralize }} for {{ term_display }}
+                    Showing {{ total_subjects }} subject{{ total_subjects|pluralize }} for {{ term_display }}
                 </small>
             </div>
             <div class="col-md-6 text-md-end">
@@ -292,6 +336,8 @@
     {% endif %}
 </div>
 
+<!-- Summary Cards -->
+{% if has_grades %}
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
         <div class="card summary-card summary-passed h-100">
@@ -299,18 +345,22 @@
                 <h6 class="text-muted mb-2">
                     <i class="bi bi-check-circle me-2"></i>Subjects Passed
                 </h6>
-                <h2 class="mb-1">{{ passed_count }}/{{ grades|length }}</h2>
+                <h2 class="mb-1">{{ passed_count }}/{{ total_subjects }}</h2>
                 <small class="text-success">
-                    {% if grades|length > 0 %}
-                        {{ passed_count|floatformat:0 }}% pass rate
+                    {% if total_subjects > 0 %}
+                        {% widthratio passed_count total_subjects 100 %}% pass rate
                     {% endif %}
                 </small>
                 <div class="mt-2">
                     <small class="text-muted">
-                        Including English: 
-                        {% for g in grades %}
-                            {% if g.subject.name.lower == 'english' %}
-                                {% if g.is_pass %}✓{% else %}✗{% endif %}
+                        English: 
+                        {% for subject in subjects %}
+                            {% if subject.name|lower == 'english' and subject.has_grade %}
+                                {% if subject.is_pass %}
+                                <span class="text-success">✓ Passed</span>
+                                {% else %}
+                                <span class="text-danger">✗ Failed</span>
+                                {% endif %}
                             {% endif %}
                         {% endfor %}
                     </small>
@@ -323,21 +373,25 @@
         <div class="card summary-card summary-points h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-2">
-                    <i class="bi bi-bar-chart me-2"></i>Total Points
+                    <i class="bi bi-bar-chart me-2"></i>Average Score
                 </h6>
                 <h2 class="mb-1">
-                    {% if total_points %}
-                        {{ total_points }}
+                    {% if total_subjects > 0 %}
+                        {% with total=0 %}
+                            {% for subject in subjects %}
+                                {% if subject.has_grade %}
+                                    {% with total=total|add:subject.score %}
+                                    {% endwith %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ total|div:total_subjects|floatformat:1 }}%
+                        {% endwith %}
                     {% else %}
-                        N/A
+                        0%
                     {% endif %}
                 </h2>
                 <small class="text-primary">
-                    {% if student.is_senior %}
-                        Best 6 including English
-                    {% else %}
-                        Average Score Basis
-                    {% endif %}
+                    Overall average performance
                 </small>
             </div>
         </div>
@@ -347,20 +401,23 @@
         <div class="card summary-card summary-position h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-2">
-                    <i class="bi bi-trophy me-2"></i>Class Position
+                    <i class="bi bi-trophy me-2"></i>Performance
                 </h6>
                 <h2 class="mb-1">
-                    {% if overall_position %}
-                        {{ overall_position }}
-                        {% if overall_position == 1 %}
-                        <i class="bi bi-trophy-fill text-warning"></i>
+                    {% if total_subjects > 0 %}
+                        {% if passed_count == total_subjects %}
+                            Excellent
+                        {% elif passed_count >= total_subjects|div:2 %}
+                            Good
+                        {% else %}
+                            Needs Improvement
                         {% endif %}
                     {% else %}
                         N/A
                     {% endif %}
                 </h2>
                 <small class="text-warning">
-                    In {{ student.get_form_display }} for {{ term_display }}
+                    Based on pass rate
                 </small>
             </div>
         </div>
@@ -370,29 +427,34 @@
         <div class="card summary-card summary-result h-100">
             <div class="card-body">
                 <h6 class="text-muted mb-2">
-                    <i class="bi bi-clipboard-check me-2"></i>Overall Result
+                    <i class="bi bi-clipboard-check me-2"></i>Status
                 </h6>
                 <h2 class="mb-1">
                     <span class="badge 
-                        {% if overall_result == 'Pass' %}bg-success
-                        {% elif 'Fail' in overall_result %}bg-danger
-                        {% else %}bg-secondary{% endif %} 
+                        {% if passed_count >= total_subjects|div:2 %}bg-success
+                        {% else %}bg-warning{% endif %} 
                         fs-6 py-2 px-3">
-                        {{ overall_result }}
+                        {% if passed_count >= total_subjects|div:2 %}
+                            On Track
+                        {% else %}
+                            Review Needed
+                        {% endif %}
                     </span>
                 </h2>
                 <small>
                     {% if student.is_senior %}
-                        MSCE Criteria
+                        MSCE Progress
                     {% else %}
-                        JCE Criteria
+                        JCE Progress
                     {% endif %}
                 </small>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
+<!-- Grading System Info -->
 <div class="row mb-4">
     <div class="col-md-7 mb-4">
         <div class="card h-100">
@@ -490,11 +552,23 @@
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     <strong>Note:</strong> Report cards must be signed by parent/guardian and returned to school.
                 </div>
+                {% if not has_grades %}
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>No Grades Available:</strong> 
+                    {% if grades.count > 0 %}
+                        {{ grades.count }} grade(s) exist in database but may not match current subjects.
+                    {% else %}
+                        No grades have been recorded for this term yet.
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- Action Buttons -->
 <div class="d-flex justify-content-between mb-4">
     <div>
         <a href="{% url 'grades:dashboard' %}" class="btn btn-outline-secondary">
@@ -509,12 +583,14 @@
     </div>
     
     <div class="btn-group" role="group">
+        {% if has_grades %}
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Print Report
         </button>
         <a href="{% url 'grades:download_report_pdf' %}?term={{ term }}" class="btn btn-outline-success">
             <i class="bi bi-download me-1"></i>Download PDF
         </a>
+        {% endif %}
         <div class="btn-group">
             <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
                 <i class="bi bi-arrow-repeat me-1"></i>Change Term
@@ -528,6 +604,7 @@
     </div>
 </div>
 
+<!-- Footer -->
 <div class="text-center text-muted small mt-4">
     <hr>
     <p class="mb-1">
@@ -543,6 +620,7 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Highlight active term button
         const currentTerm = '{{ term }}';
         document.querySelectorAll('.btn-term').forEach(btn => {
             if (btn.getAttribute('href').includes(`term=${currentTerm}`)) {
@@ -550,6 +628,7 @@
             }
         });
         
+        // Add click handler for print button
         const printBtn = document.querySelector('button[onclick="window.print()"]');
         if (printBtn) {
             printBtn.addEventListener('click', function() {
@@ -557,11 +636,19 @@
             });
         }
         
+        // Animate summary cards if they exist
         const summaryCards = document.querySelectorAll('.summary-card');
         summaryCards.forEach((card, index) => {
             card.style.animationDelay = `${index * 0.1}s`;
             card.classList.add('animate__animated', 'animate__fadeInUp');
         });
+        
+        // Add debug info to console
+        console.log('Student Grades Page Loaded');
+        console.log('Student:', '{{ student.first_name }} {{ student.last_name }}');
+        console.log('Term:', '{{ term }}');
+        console.log('Has Grades:', '{{ has_grades }}');
+        console.log('Total Subjects with Grades:', '{{ total_subjects }}');
     });
 </script>
 {% endblock %}

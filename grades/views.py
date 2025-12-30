@@ -161,7 +161,13 @@ def student_grades(request):
     term = request.GET.get('term', 'T1')
     term_display = {'T1': 'Term 1', 'T2': 'Term 2', 'T3': 'Term 3'}.get(term, term)
     
-    # Get all subjects
+    # Get ALL grades for this student in the selected term
+    grades = Grade.objects.filter(student=student, term=term).select_related('subject')
+    
+    # Create a dictionary for quick lookup by subject name
+    grades_by_subject = {grade.subject.name: grade for grade in grades}
+    
+    # Standard subjects list
     standard_subjects = [
         'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
         'Chichewa', 'English', 'Geography', 'History', 
@@ -169,9 +175,10 @@ def student_grades(request):
     ]
     
     subjects_data = []
+    passed_count = 0
+    
     for subject_name in standard_subjects:
-        subject, created = Subject.objects.get_or_create(name=subject_name)
-        grade = Grade.objects.filter(student=student, subject=subject, term=term).first()
+        grade = grades_by_subject.get(subject_name)
         
         subject_info = {
             'name': subject_name,
@@ -180,37 +187,42 @@ def student_grades(request):
         
         if grade:
             score = float(grade.score)
+            is_pass = grade.is_pass()
+            
+            if is_pass:
+                passed_count += 1
+            
             subject_info.update({
                 'score': score,
-                'is_pass': grade.is_pass(),
+                'is_pass': is_pass,
                 'grade_display': grade.get_grade_display(),
                 'teacher_name': grade.teacher_name or '',
+                'grade_obj': grade,  # Add the grade object for template access
             })
             
-            # Calculate position
+            # Calculate position - only if grade exists
             better_grades = Grade.objects.filter(
-                subject=subject, term=term, student__form=student.form, score__gt=grade.score
+                subject=grade.subject, 
+                term=term, 
+                student__form=student.form, 
+                score__gt=grade.score
             ).count()
             subject_info['position'] = better_grades + 1
         
         subjects_data.append(subject_info)
     
-    # Calculate statistics
-    passed_count = sum(1 for s in subjects_data if s.get('is_pass', False))
-    total_with_grades = sum(1 for s in subjects_data if s['has_grade'])
-    
     context = {
         'student': student,
+        'grades': grades,  # Add the grades queryset for template
         'subjects': subjects_data,
         'term': term,
         'term_display': term_display,
         'passed_count': passed_count,
-        'total_subjects': total_with_grades,
+        'total_subjects': len([s for s in subjects_data if s['has_grade']]),
+        'has_grades': grades.exists(),  # Add flag to check if any grades exist
     }
     
     return render(request, 'grades/student_grades.html', context)
-
-
 @login_required
 def student_profile(request):
     """View student profile."""
@@ -520,3 +532,4 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+

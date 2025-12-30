@@ -1,7 +1,14 @@
+# Add this at the VERY TOP of settings.py
+import os
+print("=" * 60)
+print("SETTINGS.PY - DEBUG INFO")
+print("=" * 60)
+print(f"DATABASE_URL from os.environ: {'SET' if os.environ.get('DATABASE_URL') else 'NOT SET'}")
+if os.environ.get('DATABASE_URL'):
+    print(f"DATABASE_URL value: {os.environ.get('DATABASE_URL')[:50]}...")
+print("=" * 60)
 import dj_database_url
 from pathlib import Path
-import os
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -347,3 +354,4 @@ except Exception as e:
 print("="*60)
 print("Settings loaded successfully!")
 print("="*60 + "\n")
+

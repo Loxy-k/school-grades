@@ -123,11 +123,11 @@ def school_context(request):
                 2: {'range': '70-79%', 'remark': 'Distinction'},
                 3: {'range': '65-69%', 'remark': 'Strong Credit'},
                 4: {'range': '60-64%', 'remark': 'Strong Credit'},
-                5: {'range': 55-59%', 'remark': 'Weak Credit'},
-                6: {'range': 50-54%', 'remark': 'Weak Credit'},
-                7: {'range': 45-49%', 'remark': 'Pass'},
-                8: {'range': 40-44%', 'remark': 'Pass'},
-                9: {'range': 0-39%', 'remark': 'Fail'},
+                5: {'range': '55-59%', 'remark': 'Weak Credit'},  # FIXED: Added missing quote
+                6: {'range': '50-54%', 'remark': 'Weak Credit'},
+                7: {'range': '45-49%', 'remark': 'Pass'},
+                8: {'range': '40-44%', 'remark': 'Pass'},
+                9: {'range': '0-39%', 'remark': 'Fail'},
             }
         }
     }

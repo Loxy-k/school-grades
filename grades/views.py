@@ -329,14 +329,8 @@ def student_grades(request):
         'term_display': term_display,
         'passed_count': passed_count,
         'total_subjects': subjects_with_grades,
-        'has_grades': grades.exists(),
+        'has_grades': subjects_with_grades > 0,
         'average_score': average_score,
-        'debug_info': {
-            'grades_count': grades.count(),
-            'all_grades_count': all_grades.count(),
-            'subject_names_found': [g.subject.name for g in grades],
-            'all_term_values': list(set([g.term for g in all_grades])),  # Show unique term values
-        }
     }
     
     return render(request, 'grades/student_grades.html', context)
@@ -667,5 +661,6 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 

@@ -1,4 +1,4 @@
-# grades/views.py - CLEAN FIXED VERSION
+# grades/views.py - COMPLETE FIXED VERSION WITH TERM FORMAT FIX
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -14,7 +14,18 @@ from zipfile import ZipFile
 # Import your models
 from .models import Student, Subject, Grade
 
-# Add this helper function near the top of views.py
+
+# ========== HELPER FUNCTIONS ==========
+def _get_logged_student(request):
+    """Helper function to get the logged-in student."""
+    if request.user.is_authenticated:
+        try:
+            return Student.objects.get(user=request.user)
+        except Student.DoesNotExist:
+            return None
+    return None
+
+
 def get_term_in_db_format(term_code):
     """Convert URL term codes to database format."""
     term_map = {
@@ -28,6 +39,7 @@ def get_term_in_db_format(term_code):
     # Otherwise, map from code to database format
     return term_map.get(term_code, 'Term 1')
 
+
 def get_term_display(term_code):
     """Get display name for term."""
     if term_code in ['Term 1', 'Term 2', 'Term 3']:
@@ -38,16 +50,9 @@ def get_term_display(term_code):
         'T3': 'Term 3',
     }
     return term_map.get(term_code, 'Term 1')
-def _get_logged_student(request):
-    """Helper function to get the logged-in student."""
-    if request.user.is_authenticated:
-        try:
-            return Student.objects.get(user=request.user)
-        except Student.DoesNotExist:
-            return None
-    return None
 
 
+# ========== PUBLIC VIEWS ==========
 def index(request):
     """School homepage / landing page."""
     return render(request, 'grades/home.html')
@@ -149,6 +154,9 @@ def student_logout(request):
     logout(request)
     messages.success(request, 'You have been logged out')
     return redirect('grades:index')
+
+
+# ========== STUDENT VIEWS ==========
 @login_required
 def dashboard(request):
     """Student dashboard."""
@@ -157,8 +165,8 @@ def dashboard(request):
         messages.error(request, 'Please login as a student')
         return redirect('grades:student_login')
     
-    # USE THIS: Convert to database format
-    current_term = 'Term 1'  # Direct database format
+    # Use database format directly
+    current_term = 'Term 1'
     grades = student.grades.filter(term=current_term)
     passed_count = sum(1 for grade in grades if grade.is_pass())
     
@@ -166,10 +174,11 @@ def dashboard(request):
         'student': student,
         'grades_count': grades.count(),
         'passed_count': passed_count,
-        'current_term': current_term,  # Now in DB format
+        'current_term': current_term,
     }
     
     return render(request, 'grades/dashboard.html', context)
+
 
 @login_required
 def student_grades(request):
@@ -178,10 +187,10 @@ def student_grades(request):
     if not student:
         return redirect('grades:student_login')
     
-    # GET THE TERM FROM URL
+    # Get the term from URL
     term_code = request.GET.get('term', 'T1')
     
-    # CONVERT TO DATABASE FORMAT
+    # Convert to database format
     term_in_db = get_term_in_db_format(term_code)
     term_display = get_term_display(term_code)
     
@@ -196,6 +205,7 @@ def student_grades(request):
     grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
     print(f"DEBUG: Found {grades.count()} grades for term '{term_in_db}'")
     
+    # List all grades found
     for grade in grades:
         print(f"  - Subject: {grade.subject.name}, Score: {grade.score}, Term: '{grade.term}'")
     
@@ -246,7 +256,7 @@ def student_grades(request):
             # Calculate position - USE term_in_db for database query
             better_grades = Grade.objects.filter(
                 subject=grade.subject, 
-                term=term_in_db,  # Changed from 'term' to 'term_in_db'
+                term=term_in_db,
                 student__form=student.form, 
                 score__gt=grade.score
             ).count()
@@ -265,13 +275,13 @@ def student_grades(request):
         'student': student,
         'grades': grades,
         'subjects': subjects_data,
-        'term': term_code,  # Keep the URL format
-        'term_display': term_display,  # Use the display format
+        'term': term_code,
+        'term_display': term_display,
         'passed_count': passed_count,
         'total_subjects': subjects_with_grades,
         'has_grades': grades.exists(),
         'average_score': average_score,
-        'debug_info': {  # Add debug info to template
+        'debug_info': {
             'grades_count': grades.count(),
             'all_grades_count': all_grades.count(),
             'subject_names_found': [g.subject.name for g in grades],
@@ -279,6 +289,7 @@ def student_grades(request):
     }
     
     return render(request, 'grades/student_grades.html', context)
+
 
 @login_required
 def student_profile(request):
@@ -312,7 +323,7 @@ def report_card(request):
     subjects_data = []
     for subject_name in standard_subjects:
         subject, created = Subject.objects.get_or_create(name=subject_name)
-        grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()  # Use term_in_db
+        grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()
         
         subject_info = {
             'name': subject_name,
@@ -333,7 +344,7 @@ def report_card(request):
     context = {
         'student': student,
         'subjects': subjects_data,
-        'term_display': term_display,  # Use display format
+        'term_display': term_display,
         'form_teacher_remarks': student.form_teacher_remarks or '',
         'head_teacher_remarks': student.head_teacher_remarks or '',
         'other_requirements': student.other_requirements or '',
@@ -364,7 +375,7 @@ def _generate_pdf_for_student(student, term):
         subjects_data = []
         for subject_name in standard_subjects:
             subject, created = Subject.objects.get_or_create(name=subject_name)
-            grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()  # Use term_in_db
+            grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()
             
             subject_info = {
                 'name': subject_name,
@@ -417,7 +428,7 @@ def download_report_pdf(request):
     term_code = request.GET.get('term', 'T1')
     term_in_db = get_term_in_db_format(term_code)
     
-    pdf_bytes = _generate_pdf_for_student(student, term_in_db)  # Pass database format
+    pdf_bytes = _generate_pdf_for_student(student, term_in_db)
     
     if pdf_bytes:
         term_display = get_term_display(term_code)
@@ -432,8 +443,7 @@ def download_report_pdf(request):
         return redirect('grades:report_card')
 
 
-
-
+# ========== ADMIN/TEACHER VIEWS ==========
 def is_staff_user(user):
     """Check if user is staff (teacher or admin)."""
     return user.is_authenticated and user.is_staff
@@ -451,6 +461,7 @@ def admin_dashboard(request):
     }
     
     return render(request, 'grades/admin_dashboard.html', context)
+
 
 @login_required
 @user_passes_test(is_staff_user)
@@ -492,6 +503,7 @@ def bulk_download_reports(request):
     response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_filename}.zip"'
     return response
 
+
 @login_required
 @user_passes_test(is_staff_user)
 def class_ranking_report(request):
@@ -510,7 +522,7 @@ def class_ranking_report(request):
     # Prepare data - USE term_in_db for queries
     student_data = []
     for student in students:
-        grades = Grade.objects.filter(student=student, term=term_in_db)  # Use term_in_db
+        grades = Grade.objects.filter(student=student, term=term_in_db)
         
         if grades.exists():
             avg_score = grades.aggregate(avg=Avg('score'))['avg']
@@ -537,13 +549,62 @@ def class_ranking_report(request):
     context = {
         'form': form,
         'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
-        'term': term_code,  # Keep URL format
-        'term_display': term_display,  # Use display format
+        'term': term_code,
+        'term_display': term_display,
         'students_data': student_data,
         'total_students': len(student_data),
     }
     
     return render(request, 'grades/class_ranking.html', context)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def download_class_ranking_pdf(request):
+    """Download class ranking as PDF."""
+    try:
+        from weasyprint import HTML
+        
+        form = request.GET.get('form', 'F1')
+        term_code = request.GET.get('term', 'T1')
+        term_in_db = get_term_in_db_format(term_code)
+        term_display = get_term_display(term_code)
+        
+        students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
+        
+        if not students.exists():
+            return HttpResponse("No students found.", status=404)
+        
+        # Prepare data - USE term_in_db for queries
+        student_data = []
+        for student in students:
+            grades = Grade.objects.filter(student=student, term=term_in_db)
+            
+            if grades.exists():
+                avg_score = grades.aggregate(avg=Avg('score'))['avg']
+                avg_score = float(avg_score) if avg_score else 0
+            else:
+                avg_score = 0
+            
+            student_data.append({
+                'student': student,
+                'avg_score': avg_score,
+                'total_grades': grades.count(),
+            })
+        
+        # Sort by average score
+        student_data.sort(key=lambda x: x['avg_score'], reverse=True)
+        
+        context = {
+            'form': form,
+            'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
+            'term': term_code,
+            'term_display': term_display,
+            'students_data': student_data,
+            'total_students': len(student_data),
+            'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
+        }
+        
         # Render PDF
         html_string = render_to_string('grades/class_ranking_pdf.html', context)
         html = HTML(string=html_string)
@@ -551,15 +612,9 @@ def class_ranking_report(request):
         
         # Return PDF
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        filename = f"Class_Ranking_Form{form}_{term}.pdf"
+        filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
-
-
-
-
-
-

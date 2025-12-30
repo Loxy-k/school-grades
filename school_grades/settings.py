@@ -1,11 +1,11 @@
-# Add this at the VERY TOP of settings.py
 import os
+
 print("=" * 60)
 print("SETTINGS.PY - DEBUG INFO")
 print("=" * 60)
-print(f"DATABASE_URL from os.environ: {'SET' if os.environ.get('DATABASE_URL') else 'NOT SET'}")
-if os.environ.get('DATABASE_URL'):
-    print(f"DATABASE_URL value: {os.environ.get('DATABASE_URL')[:50]}...")
+print(f"DATABASE_URL: {'✅ SET' if os.environ.get('DATABASE_URL') else '❌ NOT SET'}")
+print(f"PORT: {os.environ.get('PORT', 'NOT SET')}")
+print(f"DJANGO_SECRET_KEY: {'✅ SET' if os.environ.get('DJANGO_SECRET_KEY') else '❌ NOT SET'}")
 print("=" * 60)
 import dj_database_url
 from pathlib import Path
@@ -354,4 +354,5 @@ except Exception as e:
 print("="*60)
 print("Settings loaded successfully!")
 print("="*60 + "\n")
+
 

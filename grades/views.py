@@ -27,30 +27,65 @@ def _get_logged_student(request):
 
 
 def get_term_in_db_format(term_code):
-    """Convert URL term codes to database format."""
+    """Convert URL term codes to database format - MORE FLEXIBLE VERSION."""
+    # First, normalize the input
+    term_code = str(term_code).strip()
+    
+    # Try to match with various formats
     term_map = {
         'T1': 'Term 1',
         'T2': 'Term 2', 
         'T3': 'Term 3',
+        'term1': 'Term 1',
+        'term2': 'Term 2',
+        'term3': 'Term 3',
+        'Term1': 'Term 1',  # No space
+        'Term2': 'Term 2',
+        'Term3': 'Term 3',
+        'TERM 1': 'Term 1',
+        'TERM 2': 'Term 2',
+        'TERM 3': 'Term 3',
+        'TERM1': 'Term 1',
+        'TERM2': 'Term 2',
+        'TERM3': 'Term 3',
     }
-    # If it's already in database format, return as-is
-    if term_code in ['Term 1', 'Term 2', 'Term 3']:
+    
+    # If it's already in a known format, return it
+    if term_code in term_map.values():
         return term_code
-    # Otherwise, map from code to database format
-    return term_map.get(term_code, 'Term 1')
-
+    
+    # Try to map it
+    mapped_term = term_map.get(term_code)
+    if mapped_term:
+        return mapped_term
+    
+    # If it contains 'term' or 'Term', try to normalize it
+    lower_term = term_code.lower()
+    if 'term' in lower_term:
+        # Extract the number
+        import re
+        match = re.search(r'(\d+)', term_code)
+        if match:
+            term_num = match.group(1)
+            return f"Term {term_num}"
+    
+    # Default fallback
+    return 'Term 1'
 
 def get_term_display(term_code):
     """Get display name for term."""
-    if term_code in ['Term 1', 'Term 2', 'Term 3']:
-        return term_code
-    term_map = {
-        'T1': 'Term 1',
-        'T2': 'Term 2', 
-        'T3': 'Term 3',
-    }
-    return term_map.get(term_code, 'Term 1')
-
+    term_in_db = get_term_in_db_format(term_code)
+    # Ensure it's in proper display format
+    if term_in_db.startswith('Term '):
+        return term_in_db
+    # Try to fix it
+    if term_in_db in ['Term1', 'term1', 'T1']:
+        return 'Term 1'
+    if term_in_db in ['Term2', 'term2', 'T2']:
+        return 'Term 2'
+    if term_in_db in ['Term3', 'term3', 'T3']:
+        return 'Term 3'
+    return term_in_db
 
 # ========== PUBLIC VIEWS ==========
 def index(request):
@@ -187,27 +222,64 @@ def student_grades(request):
     if not student:
         return redirect('grades:student_login')
     
-    # Get the term from URL
+    # GET THE TERM FROM URL
     term_code = request.GET.get('term', 'T1')
     
-    # Convert to database format
+    # CONVERT TO DATABASE FORMAT
     term_in_db = get_term_in_db_format(term_code)
     term_display = get_term_display(term_code)
     
-    print(f"DEBUG: Term from URL: '{term_code}'")
-    print(f"DEBUG: Term in DB format: '{term_in_db}'")
+    print(f"=== DEBUG: STUDENT GRADES VIEW ===")
+    print(f"Student ID: {student.student_id}")
+    print(f"Form: {student.form}")
+    print(f"Term from URL: '{term_code}'")
+    print(f"Term in DB format: '{term_in_db}'")
     
-    # Get ALL grades for this student
-    all_grades = Grade.objects.filter(student=student)
-    print(f"DEBUG: Total grades for student: {all_grades.count()}")
+    # Get ALL grades for this student to see what's actually in the database
+    all_grades = Grade.objects.filter(student=student).select_related('subject')
+    print(f"Total grades in DB: {all_grades.count()}")
     
-    # Get grades using DATABASE FORMAT
+    # Print ALL grades to see actual term values
+    for grade in all_grades:
+        print(f"  Grade ID {grade.id}: Subject='{grade.subject.name}', Score={grade.score}, Term='{grade.term}'")
+    
+    # Try to find grades with different term formats
+    print(f"\nTrying to find grades with term='{term_in_db}'...")
     grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
-    print(f"DEBUG: Found {grades.count()} grades for term '{term_in_db}'")
+    print(f"Found {grades.count()} grades with exact term match")
     
-    # List all grades found
-    for grade in grades:
-        print(f"  - Subject: {grade.subject.name}, Score: {grade.score}, Term: '{grade.term}'")
+    # If no grades found, try case-insensitive search
+    if grades.count() == 0:
+        print("\nTrying case-insensitive search...")
+        # Get all grades and filter manually
+        all_student_grades = Grade.objects.filter(student=student).select_related('subject')
+        for g in all_student_grades:
+            if g.term.lower() == term_in_db.lower():
+                print(f"  Found match: '{g.term}' matches '{term_in_db}' (case-insensitive)")
+        
+        # Try different term formats
+        term_variations = [
+            'Term 1', 'Term1', 'T1', 'term 1', 'term1',
+            'Term 1 ', ' Term 1', 'TERM 1', 'TERM1'
+        ]
+        
+        print("\nTrying different term variations:")
+        for term_var in term_variations:
+            test_grades = Grade.objects.filter(student=student, term=term_var)
+            if test_grades.exists():
+                print(f"  Found {test_grades.count()} grades with term='{term_var}'")
+                for g in test_grades:
+                    print(f"    - Subject: {g.subject.name}, Term: '{g.term}'")
+    
+    # Get grades for display (use whatever works)
+    grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
+    
+    # If still no grades, try a broader search
+    if grades.count() == 0:
+        print("\nNo grades found with exact term match. Using ALL grades for display...")
+        grades = all_grades
+    
+    print(f"=== END DEBUG ===\n")
     
     # Create a dictionary for quick lookup by subject name
     grades_by_subject = {grade.subject.name: grade for grade in grades}
@@ -218,8 +290,6 @@ def student_grades(request):
         'Chichewa', 'English', 'Geography', 'History', 
         'Mathematics', 'Physics', 'Social & Life Skills'
     ]
-    
-    print(f"DEBUG: Looking for these subjects: {standard_subjects}")
     
     subjects_data = []
     passed_count = 0
@@ -235,7 +305,6 @@ def student_grades(request):
         }
         
         if grade:
-            print(f"DEBUG: Found grade for {subject_name}: {grade.score}")
             score = float(grade.score)
             is_pass = grade.is_pass()
             
@@ -256,7 +325,7 @@ def student_grades(request):
             # Calculate position - USE term_in_db for database query
             better_grades = Grade.objects.filter(
                 subject=grade.subject, 
-                term=term_in_db,
+                term=grade.term,  # Use the actual term from the grade
                 student__form=student.form, 
                 score__gt=grade.score
             ).count()
@@ -266,10 +335,6 @@ def student_grades(request):
     
     # Calculate average score
     average_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
-    
-    print(f"DEBUG: Subjects with grades: {subjects_with_grades}")
-    print(f"DEBUG: Passed count: {passed_count}")
-    print(f"DEBUG: Average score: {average_score}")
     
     context = {
         'student': student,
@@ -285,12 +350,11 @@ def student_grades(request):
             'grades_count': grades.count(),
             'all_grades_count': all_grades.count(),
             'subject_names_found': [g.subject.name for g in grades],
+            'all_term_values': list(set([g.term for g in all_grades])),  # Show unique term values
         }
     }
     
     return render(request, 'grades/student_grades.html', context)
-
-
 @login_required
 def student_profile(request):
     """View student profile."""
@@ -618,3 +682,4 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+

@@ -1,7 +1,5 @@
 from django.db import models
 from django.conf import settings
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 
 class Student(models.Model):
@@ -9,92 +7,54 @@ class Student(models.Model):
     last_name = models.CharField(max_length=50)
     student_id = models.CharField(max_length=20, unique=True)
     
-    # FORM CHOICES - Updated to include stream
+    # school form/class (Form 1-4). F1/F2 are junior, F3/F4 are senior
     FORM_CHOICES = [
-        ('F1', 'Form 1'),
-        ('F2', 'Form 2'),
-        ('F3S', 'Form 3 Science'),
-        ('F3H', 'Form 3 Humanities'),
-        ('F4S', 'Form 4 Science'),
-        ('F4H', 'Form 4 Humanities'),
-    ]
-    form = models.CharField(max_length=3, choices=FORM_CHOICES, default='F1')
-    
-    # Add a stream field for easier filtering
-    STREAM_CHOICES = [
-        ('SCIENCE', 'Science'),
-        ('HUMANITIES', 'Humanities'),
-        ('NONE', 'None'),  # For F1, F2
-    ]
-    stream = models.CharField(max_length=15, choices=STREAM_CHOICES, default='NONE')
-    
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
-    assigned_password = models.CharField(max_length=50, null=True, blank=True,
-                                         help_text='Password assigned by form teacher for initial login (plaintext)')
-
-    def __str__(self):
-        stream_display = f" ({self.get_stream_display()})" if self.stream != 'NONE' else ''
-        return f"{self.first_name} {self.last_name} ({self.student_id}) - {self.get_form_display()}{stream_display}"
-
-    @property
-    def is_senior(self):
-        return self.form in ('F3S', 'F3H', 'F4S', 'F4H')
-
-    @property
-    def level(self):
-        return 'Senior' if self.is_senior else 'Junior'
-    
-    @property
-    def base_form(self):
-        """Return the base form without stream (F1, F2, F3, F4)"""
-        if self.form in ('F3S', 'F3H'):
-            return 'F3'
-        elif self.form in ('F4S', 'F4H'):
-            return 'F4'
-        return self.form
-    
-    @property
-    def stream_code(self):
-        """Return S or H for stream"""
-        return self.form[-1] if self.form in ('F3S', 'F3H', 'F4S', 'F4H') else ''
-    
-    def save(self, *args, **kwargs):
-        # Automatically set stream based on form
-        if self.form in ('F3S', 'F4S'):
-            self.stream = 'SCIENCE'
-        elif self.form in ('F3H', 'F4H'):
-            self.stream = 'HUMANITIES'
-        else:
-            self.stream = 'NONE'
-        super().save(*args, **kwargs)
-
-
-class Subject(models.Model):
-    name = models.CharField(max_length=100)
-    
-    # Add stream-specific subjects
-    STREAM_CHOICES = [
-        ('ALL', 'All Streams'),
-        ('SCIENCE', 'Science Stream'),
-        ('HUMANITIES', 'Humanities Stream'),
-        ('JUNIOR', 'Junior Classes Only'),
-        ('SENIOR', 'Senior Classes Only'),
-    ]
-    stream = models.CharField(max_length=15, choices=STREAM_CHOICES, default='ALL')
-    
-    # Add form level
-    FORM_LEVEL_CHOICES = [
-        ('ALL', 'All Forms'),
         ('F1', 'Form 1'),
         ('F2', 'Form 2'),
         ('F3', 'Form 3'),
         ('F4', 'Form 4'),
     ]
-    form_level = models.CharField(max_length=3, choices=FORM_LEVEL_CHOICES, default='ALL')
+    form = models.CharField(max_length=2, choices=FORM_CHOICES, default='F1')
+    
+    # Report card remarks
+    form_teacher_remarks = models.TextField(blank=True, null=True)
+    head_teacher_remarks = models.TextField(blank=True, null=True)
+    other_requirements = models.TextField(blank=True, null=True)
+    
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    # Optional password assigned by form teachers; used for initial student login
+    assigned_password = models.CharField(max_length=50, null=True, blank=True,
+                                         help_text='Password assigned by form teacher for initial login (plaintext)')
 
     def __str__(self):
-        stream_info = f" ({self.get_stream_display()})" if self.stream != 'ALL' else ''
-        return f"{self.name}{stream_info}"
+        return f"{self.first_name} {self.last_name} ({self.student_id}) - {self.get_form_display()}"
+
+    @property
+    def is_senior(self):
+        return self.form in ('F3', 'F4')
+
+    @property
+    def level(self):
+        return 'Senior' if self.is_senior else 'Junior'
+
+
+class Subject(models.Model):
+    name = models.CharField(max_length=100)
+    
+    # Define which subjects belong to which forms (optional)
+    FORMS_CHOICES = [
+        ('ALL', 'All Forms'),
+        ('F1', 'Form 1'),
+        ('F2', 'Form 2'),
+        ('F3', 'Form 3'),
+        ('F4', 'Form 4'),
+        ('JUNIOR', 'Forms 1-2'),
+        ('SENIOR', 'Forms 3-4'),
+    ]
+    available_for = models.CharField(max_length=10, choices=FORMS_CHOICES, default='ALL')
+
+    def __str__(self):
+        return self.name
 
 
 class Grade(models.Model):
@@ -102,6 +62,10 @@ class Grade(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     score = models.DecimalField(max_digits=5, decimal_places=2)
     
+    # Teacher's name for report card
+    teacher_name = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Academic term for the grade (Term 1, Term 2, Term 3)
     TERM_CHOICES = [
         ('T1', 'Term 1'),
         ('T2', 'Term 2'),
@@ -119,30 +83,35 @@ class Grade(models.Model):
     @property
     def letter(self):
         s = float(self.score)
-        if s >= 80:
+        if s >= 90:
             return 'A'
-        if s >= 70:
+        if s >= 80:
             return 'B'
-        if s >= 60:
+        if s >= 70:
             return 'C'
-        if s >= 40:
+        if s >= 60:
             return 'D'
         return 'F'
 
     def grade_label(self):
+        """Return a human-readable grade label depending on student's level.
+        For junior classes (F1, F2): returns JCE grading like 'A (EXCELLENT)'.
+        For senior classes (F3, F4): returns MSCE numeric grading like '1 (DISTINCTION)'.
+        """
         s = float(self.score)
         if not self.student or not self.student.is_senior:
+            # Junior classes (Forms 1-2): JCE grading
             if s >= 80:
                 return 'A (EXCELLENT)'
             if s >= 70:
                 return 'B (VERY GOOD)'
-            if s >= 60:
+            if s >= 50:
                 return 'C (GOOD)'
             if s >= 40:
-                return 'D (PASS)'
+                return 'D (AVERAGE)'
             return 'F (FAIL)'
 
-        # Senior classes
+        # Senior classes (Forms 3-4): MSCE numeric grading
         if s >= 80:
             return '1 (DISTINCTION)'
         if s >= 70:
@@ -150,11 +119,11 @@ class Grade(models.Model):
         if s >= 65:
             return '3 (STRONG CREDIT)'
         if s >= 60:
-            return '4 (CREDIT)'
+            return '4 (STRONG CREDIT)'
         if s >= 55:
-            return '5 (CREDIT)'
+            return '5 (WEAK CREDIT)'
         if s >= 50:
-            return '6 (CREDIT)'
+            return '6 (WEAK CREDIT)'
         if s >= 45:
             return '7 (PASS)'
         if s >= 40:
@@ -162,6 +131,7 @@ class Grade(models.Model):
         return '9 (FAIL)'
 
     def senior_point(self):
+        """Return the numeric point for senior grading (1..9) or None for junior classes."""
         if not self.student or not self.student.is_senior:
             return None
         s = float(self.score)
@@ -183,67 +153,34 @@ class Grade(models.Model):
             return 8
         return 9
 
+    def junior_grade(self):
+        """Return the letter grade for junior classes (A-F)."""
+        if not self.student or self.student.is_senior:
+            return None
+        s = float(self.score)
+        if s >= 80:
+            return 'A'
+        if s >= 70:
+            return 'B'
+        if s >= 50:
+            return 'C'
+        if s >= 40:
+            return 'D'
+        return 'F'
+
     def is_pass(self):
+        """Return True if this grade is a pass for the student's level."""
         if not self.student or not self.student.is_senior:
+            # Junior: D or better is passing (40%+)
             return float(self.score) >= 40
+        # Senior: points 1-8 are passing, 9 is fail
         return self.senior_point() is not None and self.senior_point() <= 8
 
-
-class UserProfile(models.Model):
-    ROLE_CHOICES = [
-        ('student', 'Student'),
-        ('teacher', 'Form Teacher'),
-        ('admin', 'Administrator'),
-        ('parent', 'Parent/Guardian'),
-    ]
-    
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
-    forms_responsible = models.CharField(
-        max_length=50,  # Increased length for more forms
-        blank=True, 
-        null=True,
-        help_text='Forms this teacher is responsible for (e.g., "F3S,F4H" or "ALL")'
-    )
-    
-    class Meta:
-        verbose_name = 'User Profile'
-        verbose_name_plural = 'User Profiles'
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.get_role_display()}"
-    
-    @property
-    def is_teacher(self):
-        return self.role == 'teacher'
-    
-    @property
-    def is_admin(self):
-        return self.role == 'admin'
-    
-    @property
-    def is_student(self):
-        return self.role == 'student'
-    
-    @property
-    def can_print_reports(self):
-        return self.is_teacher or self.is_admin
-    
-    def get_responsible_forms(self):
-        if self.forms_responsible == 'ALL':
-            return ['F1', 'F2', 'F3S', 'F3H', 'F4S', 'F4H']
-        elif self.forms_responsible:
-            return [f.strip() for f in self.forms_responsible.split(',')]
-        return []
-
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.get_or_create(user=instance)
-
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def save_user_profile(sender, instance, **kwargs):
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+    def get_grade_display(self):
+        """Get the appropriate grade display for report card."""
+        if self.student.is_senior:
+            point = self.senior_point()
+            return str(point) if point else ''
+        else:
+            grade = self.junior_grade()
+            return grade if grade else ''

@@ -67,6 +67,24 @@
         background-color: #f8f9fa;
         border-left: 4px solid #1e3c72;
     }
+    
+    /* Level badge styles */
+    .level-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-weight: 600;
+    }
+    
+    .badge-junior {
+        background-color: #2ecc71;
+        color: white;
+    }
+    
+    .badge-senior {
+        background-color: #3498db;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -101,7 +119,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Select Form:</label>
                     <select class="form-select" id="formSelect" onchange="updateForm()">
-                        {% for f_code, f_name in student_form_choices %}
+                        {% for f_code, f_name in form_choices %}
                         <option value="{{ f_code }}" {% if f_code == form %}selected{% endif %}>
                             {{ f_name }}
                         </option>
@@ -220,119 +238,104 @@
     </div>
 
     <!-- Class Ranking Table -->
-><thead>
-    <tr>
-        <th class="position-col">Pos</th>
-        <th class="student-name-cell">Student Name & ID</th>
-        <th class="text-center">Class/Stream</th>  <!-- Added column -->
-        <th class="text-center">Avg/Total</th>
-        <th class="text-center">Passed</th>
-        {% for subject in subjects %}
-        <th class="subject-header">
-            {{ subject.name|truncatechars:15 }}
-        </th>
-        {% endfor %}
-    </tr>
-</thead>
-        
-        <div class="table-container">
-            <table class="table table-bordered ranking-table mb-0">
-                <thead>
-                    <tr>
-                        <th class="position-cell">Pos</th>
-                        <th class="student-name-cell">Student Name & ID</th>
-                        <th class="text-center">Avg/Total</th>
-                        <th class="text-center">Passed</th>
-                        {% for subject in subjects %}
-                        <th class="subject-header">
-                            {{ subject.name|truncatechars:15 }}
-                        </th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in students_data %}
-                    <tr>
-            <!-- Position -->
-            <td class="position-cell position-{{ data.position }}">
-                {% if data.position == 1 %}🥇
-                {% elif data.position == 2 %}🥈
-                {% elif data.position == 3 %}🥉
-                {% else %}{{ data.position }}
-                {% endif %}
-            </td>>
-                        
-                        <!-- Student Info -->
-                         <td class="student-name-cell">
-                             <div class="fw-bold">{{ data.student.first_name }} {{ data.student.last_name }}</div>
-                             <small class="text-muted">ID: {{ data.student.student_id }}</small>
-                         </td>
-                        <!-- Class/Stream -->
-        <td class="text-center">
-            <div>{{ data.student.get_form_display }}</div>
-            {% if data.student.stream != 'NONE' %}
-            <small class="badge 
-                {% if data.student.stream == 'SCIENCE' %}bg-info
-                {% else %}bg-warning{% endif %}">
-                {{ data.student.get_stream_display }}
-            </small>
-            {% endif %}
-        </td>
-                        <!-- Average/Total -->
-                        <td class="text-center fw-bold">
-                            {{ data.ranking_display }}
-                        </td>
-                        
-                        <!-- Passed Count -->
-                        <td class="text-center">
-                            <span class="badge {% if data.passed_count >= 6 %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ data.passed_count }}/{{ data.total_subjects_taken }}
-                            </span>
-                        </td>
-                        
-                        <!-- Subject Scores -->
-                        {% for score in data.subject_scores %}
-                        <td class="score-cell 
-                            {% if score.score is None %}score-absent
-                            {% elif score.passed %}score-pass
-                            {% else %}score-fail{% endif %}">
-                            {{ score.display }}
-                            {% if score.score is not None %}
-                            <br>
-                            <small class="{% if score.passed %}text-success{% else %}text-danger{% endif %}">
-                                {{ score.grade }}
-                            </small>
-                            {% endif %}
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="{{ subjects|length|add:4 }}" class="text-center py-5">
-                            <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
-                            <h4 class="text-muted">No Data Available</h4>
-                            <p class="text-muted">No grades recorded for {{ form_display }} in {{ term_display }}</p>
-                        </td>
-                    </tr>
+    <div class="table-container">
+        <table class="table table-bordered ranking-table mb-0">
+            <thead>
+                <tr>
+                    <th class="position-cell">Pos</th>
+                    <th class="student-name-cell">Student Name & ID</th>
+                    <th class="text-center">Level</th>
+                    <th class="text-center">Avg/Total</th>
+                    <th class="text-center">Passed</th>
+                    {% for subject in subjects %}
+                    <th class="subject-header">
+                        {{ subject.name|truncatechars:15 }}
+                    </th>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="card-footer bg-light">
-            <div class="row">
-                <div class="col-md-6">
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        AB = Absent | Showing {{ students_data|length }} students
-                    </small>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <small class="text-muted">
-                        <i class="bi bi-clock me-1"></i>
-                        Generated: {% now "F j, Y, g:i a" %}
-                    </small>
-                </div>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in students_data %}
+                <tr>
+                    <!-- Position -->
+                    <td class="position-cell position-{{ data.position }}">
+                        {% if data.position == 1 %}🥇
+                        {% elif data.position == 2 %}🥈
+                        {% elif data.position == 3 %}🥉
+                        {% else %}{{ data.position }}
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Student Info -->
+                    <td class="student-name-cell">
+                        <div class="fw-bold">{{ data.student.first_name }} {{ data.student.last_name }}</div>
+                        <small class="text-muted">ID: {{ data.student.student_id }}</small>
+                    </td>
+                    
+                    <!-- Level -->
+                    <td class="text-center">
+                        <div>{{ data.student.get_form_display }}</div>
+                        {% if data.student.is_senior %}
+                        <small class="badge badge-senior level-badge">Senior</small>
+                        {% else %}
+                        <small class="badge badge-junior level-badge">Junior</small>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Average/Total -->
+                    <td class="text-center fw-bold">
+                        {{ data.ranking_display }}
+                    </td>
+                    
+                    <!-- Passed Count -->
+                    <td class="text-center">
+                        <span class="badge {% if data.passed_count >= 6 %}bg-success{% else %}bg-warning{% endif %}">
+                            {{ data.passed_count }}/{{ data.total_subjects_taken }}
+                        </span>
+                    </td>
+                    
+                    <!-- Subject Scores -->
+                    {% for score in data.subject_scores %}
+                    <td class="score-cell 
+                        {% if score.score is None %}score-absent
+                        {% elif score.passed %}score-pass
+                        {% else %}score-fail{% endif %}">
+                        {{ score.display }}
+                        {% if score.score is not None %}
+                        <br>
+                        <small class="{% if score.passed %}text-success{% else %}text-danger{% endif %}">
+                            {{ score.grade }}
+                        </small>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ subjects|length|add:5 }}" class="text-center py-5">
+                        <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                        <h4 class="text-muted">No Data Available</h4>
+                        <p class="text-muted">No grades recorded for {{ form_display }} in {{ term_display }}</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="card-footer bg-light">
+        <div class="row">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    AB = Absent | Showing {{ students_data|length }} students
+                </small>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    Generated: {% now "F j, Y, g:i a" %}
+                </small>
             </div>
         </div>
     </div>
@@ -401,13 +404,11 @@
         window.location.href = `{% url 'grades:class_ranking' %}?form=${form}&term=${term}`;
     }
     
-    // Make table headers sticky when scrolling
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Class ranking page loaded');
         console.log('Current form:', '{{ form }}');
         console.log('Current term:', '{{ term }}');
         
-        // Initialize dropdowns
         const formSelect = document.getElementById('formSelect');
         const termSelect = document.getElementById('termSelect');
         
@@ -418,26 +419,11 @@
             termSelect.value = '{{ term }}';
         }
         
-        // Add event listeners
         if (formSelect) {
             formSelect.addEventListener('change', updateForm);
         }
         if (termSelect) {
             termSelect.addEventListener('change', updateTerm);
-        }
-        
-        const tableContainer = document.querySelector('.table-container');
-        if (tableContainer) {
-            tableContainer.addEventListener('scroll', function() {
-                const headers = this.querySelectorAll('thead th');
-                headers.forEach(header => {
-                    if (this.scrollLeft > 0) {
-                        header.style.transform = `translateX(${this.scrollLeft}px)`;
-                    } else {
-                        header.style.transform = 'none';
-                    }
-                });
-            });
         }
     });
 </script>

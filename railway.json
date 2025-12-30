@@ -5,14 +5,8 @@
     "buildCommand": "python manage.py collectstatic --noinput"
   },
   "deploy": {
-    "startCommand": "python manage.py migrate && gunicorn school_grades.wsgi:application --bind 0.0.0.0:$PORT",
+    "startCommand": "python manage.py migrate --noinput && gunicorn school_grades.wsgi:application --bind 0.0.0.0:$PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
-  },
-  "services": {
-    "postgresql": {
-      "type": "postgresql",
-      "persistentStorage": true
-    }
   }
 }

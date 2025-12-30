@@ -150,7 +150,6 @@ def dashboard(request):
     
     return render(request, 'grades/dashboard.html', context)
 
-
 @login_required
 def student_grades(request):
     """View student grades for a specific term."""
@@ -176,6 +175,8 @@ def student_grades(request):
     
     subjects_data = []
     passed_count = 0
+    total_score = 0
+    subjects_with_grades = 0
     
     for subject_name in standard_subjects:
         grade = grades_by_subject.get(subject_name)
@@ -192,15 +193,18 @@ def student_grades(request):
             if is_pass:
                 passed_count += 1
             
+            total_score += score
+            subjects_with_grades += 1
+            
             subject_info.update({
                 'score': score,
                 'is_pass': is_pass,
                 'grade_display': grade.get_grade_display(),
                 'teacher_name': grade.teacher_name or '',
-                'grade_obj': grade,  # Add the grade object for template access
+                'grade_obj': grade,
             })
             
-            # Calculate position - only if grade exists
+            # Calculate position
             better_grades = Grade.objects.filter(
                 subject=grade.subject, 
                 term=term, 
@@ -211,15 +215,19 @@ def student_grades(request):
         
         subjects_data.append(subject_info)
     
+    # Calculate average score
+    average_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
+    
     context = {
         'student': student,
-        'grades': grades,  # Add the grades queryset for template
+        'grades': grades,
         'subjects': subjects_data,
         'term': term,
         'term_display': term_display,
         'passed_count': passed_count,
-        'total_subjects': len([s for s in subjects_data if s['has_grade']]),
-        'has_grades': grades.exists(),  # Add flag to check if any grades exist
+        'total_subjects': subjects_with_grades,
+        'has_grades': grades.exists(),
+        'average_score': average_score,
     }
     
     return render(request, 'grades/student_grades.html', context)
@@ -532,4 +540,5 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 

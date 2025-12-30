@@ -160,8 +160,21 @@ def student_grades(request):
     term = request.GET.get('term', 'T1')
     term_display = {'T1': 'Term 1', 'T2': 'Term 2', 'T3': 'Term 3'}.get(term, term)
     
-    # Get ALL grades for this student in the selected term
+    print(f"DEBUG: Student ID: {student.student_id}")
+    print(f"DEBUG: Term selected: {term}")
+    print(f"DEBUG: Student form: {student.form}")
+    
+    # Get ALL grades for this student
+    all_grades = Grade.objects.filter(student=student)
+    print(f"DEBUG: Total grades for student: {all_grades.count()}")
+    
+    # Get grades for this term
     grades = Grade.objects.filter(student=student, term=term).select_related('subject')
+    print(f"DEBUG: Grades for term {term}: {grades.count()}")
+    
+    # List all grades found
+    for grade in grades:
+        print(f"  - Subject: {grade.subject.name}, Score: {grade.score}, Term: {grade.term}")
     
     # Create a dictionary for quick lookup by subject name
     grades_by_subject = {grade.subject.name: grade for grade in grades}
@@ -172,6 +185,8 @@ def student_grades(request):
         'Chichewa', 'English', 'Geography', 'History', 
         'Mathematics', 'Physics', 'Social & Life Skills'
     ]
+    
+    print(f"DEBUG: Looking for these subjects: {standard_subjects}")
     
     subjects_data = []
     passed_count = 0
@@ -187,6 +202,7 @@ def student_grades(request):
         }
         
         if grade:
+            print(f"DEBUG: Found grade for {subject_name}: {grade.score}")
             score = float(grade.score)
             is_pass = grade.is_pass()
             
@@ -218,6 +234,10 @@ def student_grades(request):
     # Calculate average score
     average_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
     
+    print(f"DEBUG: Subjects with grades: {subjects_with_grades}")
+    print(f"DEBUG: Passed count: {passed_count}")
+    print(f"DEBUG: Average score: {average_score}")
+    
     context = {
         'student': student,
         'grades': grades,
@@ -228,6 +248,11 @@ def student_grades(request):
         'total_subjects': subjects_with_grades,
         'has_grades': grades.exists(),
         'average_score': average_score,
+        'debug_info': {  # Add debug info to template
+            'grades_count': grades.count(),
+            'all_grades_count': all_grades.count(),
+            'subject_names_found': [g.subject.name for g in grades],
+        }
     }
     
     return render(request, 'grades/student_grades.html', context)
@@ -540,5 +565,6 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 

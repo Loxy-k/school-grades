@@ -5,7 +5,7 @@
     "buildCommand": "python manage.py collectstatic --noinput"
   },
   "deploy": {
-    "startCommand": "python debug_startup.py && python manage.py migrate --noinput && echo 'Starting Gunicorn...' && gunicorn school_grades.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --log-level info --access-logfile - --error-logfile -",
+    "startCommand": "python test_simple.py && python manage.py migrate --noinput && echo 'Starting server...' && python manage.py runserver 0.0.0.0:$PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

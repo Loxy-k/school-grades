@@ -6,7 +6,7 @@ app_name = 'grades'
 
 urlpatterns = [
     # Home and API
-    path('', views.home, name='home'),
+    path('', views.index, name='index'),  # Changed from views.home to views.index
     path('student/<int:pk>/', views.student_detail, name='student_detail'),
     path('api/grades/', views.api_grades, name='api_grades'),
 
@@ -16,6 +16,9 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('student/grades/', views.student_grades, name='student_grades'),
     path('student/profile/', views.student_profile, name='student_profile'),
+    
+    # NEW: Official report card view
+    path('report-card/', views.report_card, name='report_card'),
     
     # PDF downloads (student)
     path('grades/download/', views.download_report_pdf, name='download_report_pdf'),

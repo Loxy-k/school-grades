@@ -6,7 +6,8 @@ app_name = 'grades'
 
 urlpatterns = [
     # Home and API
-    path('', views.index, name='index'),  # Changed from views.home to views.index
+    path('', views.index, name='index'),
+    path('home/', views.index, name='home'),  # ADD THIS LINE - alias for 'home'
     path('student/<int:pk>/', views.student_detail, name='student_detail'),
     path('api/grades/', views.api_grades, name='api_grades'),
 

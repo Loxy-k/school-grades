@@ -104,6 +104,33 @@
 {% endblock %}
 
 {% block content %}
+{% block content %}
+<!-- DEBUG INFO - Remove this after fixing -->
+{% if debug_info %}
+<div class="alert alert-info small mb-3">
+    <h6><i class="bi bi-bug me-2"></i>Debug Info</h6>
+    <div class="row">
+        <div class="col-md-4">
+            <strong>Student:</strong> {{ student.student_id }}<br>
+            <strong>Form:</strong> {{ student.form }}<br>
+            <strong>Term:</strong> {{ term }}
+        </div>
+        <div class="col-md-4">
+            <strong>Grades in DB:</strong> {{ debug_info.all_grades_count }}<br>
+            <strong>Grades this term:</strong> {{ debug_info.grades_count }}<br>
+            <strong>Has Grades:</strong> {{ has_grades }}
+        </div>
+        <div class="col-md-4">
+            <strong>Subjects Found:</strong><br>
+            {% for subject in debug_info.subject_names_found %}
+                • {{ subject }}<br>
+            {% empty %}
+                None
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 <div class="card border-0 shadow-lg mb-4">
     <div class="card-body report-card-header p-4">
         <div class="row align-items-center">
@@ -537,3 +564,4 @@
     });
 </script>
 {% endblock %}
+

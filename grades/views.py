@@ -452,13 +452,13 @@ def admin_dashboard(request):
     
     return render(request, 'grades/admin_dashboard.html', context)
 
-
 @login_required
 @user_passes_test(is_staff_user)
 def bulk_download_reports(request):
     """Generate PDF reports for all students in a class."""
     form = request.GET.get('form', 'F1')
-    term = request.GET.get('term', 'T1')
+    term_code = request.GET.get('term', 'T1')
+    term_in_db = get_term_in_db_format(term_code)
     
     if form not in [f[0] for f in Student.FORM_CHOICES]:
         return HttpResponse("Invalid form selected.", status=400)
@@ -470,15 +470,17 @@ def bulk_download_reports(request):
     
     # Create ZIP file
     zip_buffer = io.BytesIO()
-    term_display = {'T1': 'Term1', 'T2': 'Term2', 'T3': 'Term3'}.get(term, term)
+    term_display = get_term_display(term_code)
+    term_filename = term_display.replace(' ', '')
     
     with ZipFile(zip_buffer, 'w') as zip_file:
         successful = 0
         
         for student in students:
-            pdf_content = _generate_pdf_for_student(student, term)
+            # Pass database format to PDF generator
+            pdf_content = _generate_pdf_for_student(student, term_in_db)
             if pdf_content:
-                filename = f"Report_{student.student_id}_{term_display}.pdf"
+                filename = f"Report_{student.student_id}_{term_filename}.pdf"
                 zip_file.writestr(filename, pdf_content)
                 successful += 1
     
@@ -487,16 +489,17 @@ def bulk_download_reports(request):
     
     zip_buffer.seek(0)
     response = HttpResponse(zip_buffer, content_type='application/zip')
-    response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_display}.zip"'
+    response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_filename}.zip"'
     return response
-
 
 @login_required
 @user_passes_test(is_staff_user)
 def class_ranking_report(request):
     """Generate a class ranking report."""
     form = request.GET.get('form', 'F1')
-    term = request.GET.get('term', 'T1')
+    term_code = request.GET.get('term', 'T1')
+    term_in_db = get_term_in_db_format(term_code)
+    term_display = get_term_display(term_code)
     
     students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
     
@@ -504,10 +507,10 @@ def class_ranking_report(request):
         messages.error(request, f"No students found in Form {form}")
         return redirect('grades:admin_dashboard')
     
-    # Prepare data
+    # Prepare data - USE term_in_db for queries
     student_data = []
     for student in students:
-        grades = Grade.objects.filter(student=student, term=term)
+        grades = Grade.objects.filter(student=student, term=term_in_db)  # Use term_in_db
         
         if grades.exists():
             avg_score = grades.aggregate(avg=Avg('score'))['avg']
@@ -534,60 +537,13 @@ def class_ranking_report(request):
     context = {
         'form': form,
         'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
-        'term': term,
-        'term_display': {'T1': 'Term 1', 'T2': 'Term 2', 'T3': 'Term 3'}.get(term, term),
+        'term': term_code,  # Keep URL format
+        'term_display': term_display,  # Use display format
         'students_data': student_data,
         'total_students': len(student_data),
     }
     
     return render(request, 'grades/class_ranking.html', context)
-
-
-@login_required
-@user_passes_test(is_staff_user)
-def download_class_ranking_pdf(request):
-    """Download class ranking as PDF."""
-    try:
-        from weasyprint import HTML
-        
-        form = request.GET.get('form', 'F1')
-        term = request.GET.get('term', 'T1')
-        
-        students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
-        
-        if not students.exists():
-            return HttpResponse("No students found.", status=404)
-        
-        # Prepare data
-        student_data = []
-        for student in students:
-            grades = Grade.objects.filter(student=student, term=term)
-            
-            if grades.exists():
-                avg_score = grades.aggregate(avg=Avg('score'))['avg']
-                avg_score = float(avg_score) if avg_score else 0
-            else:
-                avg_score = 0
-            
-            student_data.append({
-                'student': student,
-                'avg_score': avg_score,
-                'total_grades': grades.count(),
-            })
-        
-        # Sort by average score
-        student_data.sort(key=lambda x: x['avg_score'], reverse=True)
-        
-        context = {
-            'form': form,
-            'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
-            'term': term,
-            'term_display': {'T1': 'Term 1', 'T2': 'Term 2', 'T3': 'Term 3'}.get(term, term),
-            'students_data': student_data,
-            'total_students': len(student_data),
-            'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
-        }
-        
         # Render PDF
         html_string = render_to_string('grades/class_ranking_pdf.html', context)
         html = HTML(string=html_string)
@@ -601,6 +557,7 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 
 

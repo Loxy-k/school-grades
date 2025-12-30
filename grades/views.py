@@ -27,65 +27,50 @@ def _get_logged_student(request):
 
 
 def get_term_in_db_format(term_code):
-    """Convert URL term codes to database format - MORE FLEXIBLE VERSION."""
-    # First, normalize the input
+    """Convert URL term codes to database format."""
+    # Your database stores terms as 'T1', 'T2', 'T3'
+    term_map = {
+        'T1': 'T1',
+        'T2': 'T2', 
+        'T3': 'T3',
+        'Term 1': 'T1',  # Map display format to DB format
+        'Term 2': 'T2',
+        'Term 3': 'T3',
+        'Term1': 'T1',
+        'Term2': 'T2',
+        'Term3': 'T3',
+        'term 1': 'T1',
+        'term 2': 'T2',
+        'term 3': 'T3',
+    }
+    
+    # Normalize the input
     term_code = str(term_code).strip()
     
-    # Try to match with various formats
+    # If it's already in database format, return as-is
+    if term_code in ['T1', 'T2', 'T3']:
+        return term_code
+    
+    # Map from other formats to database format
+    return term_map.get(term_code, 'T1')  # Default to T1
+
+def get_term_display(term_code):
+    """Get display name for term."""
+    # For display, show 'Term 1', 'Term 2', 'Term 3'
     term_map = {
         'T1': 'Term 1',
         'T2': 'Term 2', 
         'T3': 'Term 3',
-        'term1': 'Term 1',
-        'term2': 'Term 2',
-        'term3': 'Term 3',
-        'Term1': 'Term 1',  # No space
-        'Term2': 'Term 2',
-        'Term3': 'Term 3',
-        'TERM 1': 'Term 1',
-        'TERM 2': 'Term 2',
-        'TERM 3': 'Term 3',
-        'TERM1': 'Term 1',
-        'TERM2': 'Term 2',
-        'TERM3': 'Term 3',
+        'Term 1': 'Term 1',
+        'Term 2': 'Term 2',
+        'Term 3': 'Term 3',
     }
     
-    # If it's already in a known format, return it
-    if term_code in term_map.values():
-        return term_code
+    # Normalize the input
+    term_code = str(term_code).strip()
     
-    # Try to map it
-    mapped_term = term_map.get(term_code)
-    if mapped_term:
-        return mapped_term
-    
-    # If it contains 'term' or 'Term', try to normalize it
-    lower_term = term_code.lower()
-    if 'term' in lower_term:
-        # Extract the number
-        import re
-        match = re.search(r'(\d+)', term_code)
-        if match:
-            term_num = match.group(1)
-            return f"Term {term_num}"
-    
-    # Default fallback
-    return 'Term 1'
-
-def get_term_display(term_code):
-    """Get display name for term."""
-    term_in_db = get_term_in_db_format(term_code)
-    # Ensure it's in proper display format
-    if term_in_db.startswith('Term '):
-        return term_in_db
-    # Try to fix it
-    if term_in_db in ['Term1', 'term1', 'T1']:
-        return 'Term 1'
-    if term_in_db in ['Term2', 'term2', 'T2']:
-        return 'Term 2'
-    if term_in_db in ['Term3', 'term3', 'T3']:
-        return 'Term 3'
-    return term_in_db
+    # Map to display format
+    return term_map.get(term_code, 'Term 1')
 
 # ========== PUBLIC VIEWS ==========
 def index(request):
@@ -200,8 +185,8 @@ def dashboard(request):
         messages.error(request, 'Please login as a student')
         return redirect('grades:student_login')
     
-    # Use database format directly
-    current_term = 'Term 1'
+    # Use database format: 'T1' not 'Term 1'
+    current_term = 'T1'  # Changed from 'Term 1' to 'T1'
     grades = student.grades.filter(term=current_term)
     passed_count = sum(1 for grade in grades if grade.is_pass())
     
@@ -682,4 +667,5 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 

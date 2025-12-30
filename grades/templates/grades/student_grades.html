@@ -337,6 +337,7 @@
 </div>
 
 <!-- Summary Cards -->
+<!-- Summary Cards -->
 {% if has_grades %}
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
@@ -348,23 +349,9 @@
                 <h2 class="mb-1">{{ passed_count }}/{{ total_subjects }}</h2>
                 <small class="text-success">
                     {% if total_subjects > 0 %}
-                        {% widthratio passed_count total_subjects 100 %}% pass rate
+                        {{ passed_count|add:"0"|floatformat:0 }} out of {{ total_subjects }}
                     {% endif %}
                 </small>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        English: 
-                        {% for subject in subjects %}
-                            {% if subject.name|lower == 'english' and subject.has_grade %}
-                                {% if subject.is_pass %}
-                                <span class="text-success">✓ Passed</span>
-                                {% else %}
-                                <span class="text-danger">✗ Failed</span>
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
-                    </small>
-                </div>
             </div>
         </div>
     </div>
@@ -384,7 +371,13 @@
                                     {% endwith %}
                                 {% endif %}
                             {% endfor %}
-                            {{ total|div:total_subjects|floatformat:1 }}%
+                            {% comment %} Calculate average manually {% endcomment %}
+                            {% load mathfilters %}
+                            {% if total > 0 %}
+                                {{ total|div:total_subjects|floatformat:1 }}%
+                            {% else %}
+                                0%
+                            {% endif %}
                         {% endwith %}
                     {% else %}
                         0%
@@ -407,7 +400,7 @@
                     {% if total_subjects > 0 %}
                         {% if passed_count == total_subjects %}
                             Excellent
-                        {% elif passed_count >= total_subjects|div:2 %}
+                        {% elif passed_count >= total_subjects|divisibleby:2 %}
                             Good
                         {% else %}
                             Needs Improvement
@@ -431,13 +424,17 @@
                 </h6>
                 <h2 class="mb-1">
                     <span class="badge 
-                        {% if passed_count >= total_subjects|div:2 %}bg-success
+                        {% if total_subjects > 0 and passed_count >= total_subjects|divisibleby:2 %}bg-success
                         {% else %}bg-warning{% endif %} 
                         fs-6 py-2 px-3">
-                        {% if passed_count >= total_subjects|div:2 %}
-                            On Track
+                        {% if total_subjects > 0 %}
+                            {% if passed_count >= total_subjects|divisibleby:2 %}
+                                On Track
+                            {% else %}
+                                Review Needed
+                            {% endif %}
                         {% else %}
-                            Review Needed
+                            N/A
                         {% endif %}
                     </span>
                 </h2>
@@ -652,3 +649,4 @@
     });
 </script>
 {% endblock %}
+

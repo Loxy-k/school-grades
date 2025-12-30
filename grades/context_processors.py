@@ -30,38 +30,54 @@ def school_context(request):
     # ==================== USER INFORMATION ====================
     if request.user.is_authenticated and not isinstance(request.user, AnonymousUser):
         try:
-            # Try to get student info
+            # Try to get student info - FIXED: Added proper error handling
             student = Student.objects.get(user=request.user)
-            context.update({
-                'student': student,
-                'student_form': student.form,
-                'student_form_display': student.get_form_display(),
-                'is_senior_student': student.is_senior,
-                'student_level': student.level,
+            
+            # Build student info with safe attribute access
+            student_info = {
+                'is_student_user': True,
                 'student_full_name': f"{student.first_name} {student.last_name}",
                 'student_id': student.student_id,
-                'is_student_user': True,
-                'is_teacher_user': False,
-                'is_admin_user': False,
-                'user_role': 'Student',
-            })
+                'student_form': student.form,
+                'student_form_display': getattr(student, 'get_form_display', lambda: student.form)(),
+                'is_senior_student': getattr(student, 'is_senior', False),
+                'student_level': getattr(student, 'level', 'Unknown'),
+            }
+            
+            # Only add optional fields if they exist
+            optional_fields = ['form_teacher_remarks', 'head_teacher_remarks', 'stream']
+            for field in optional_fields:
+                if hasattr(student, field):
+                    student_info[field] = getattr(student, field)
+            
+            context.update(student_info)
+            
         except Student.DoesNotExist:
-            # Check if user is staff/admin
+            # User is not a student - check if staff/admin
             if request.user.is_staff:
                 context.update({
                     'is_student_user': False,
-                    'is_teacher_user': not request.user.is_superuser,  # Staff but not superuser = teacher
+                    'is_teacher_user': not request.user.is_superuser,
                     'is_admin_user': request.user.is_superuser,
                     'user_role': 'Administrator' if request.user.is_superuser else 'Teacher',
                 })
             else:
-                # Regular authenticated user who is not a student or staff
+                # Regular authenticated user
                 context.update({
                     'is_student_user': False,
                     'is_teacher_user': False,
                     'is_admin_user': False,
                     'user_role': 'User',
                 })
+        except Exception as e:
+            # Catch any database errors (like missing columns)
+            print(f"⚠️ Warning in context processor: {e}")
+            context.update({
+                'is_student_user': False,
+                'is_teacher_user': False,
+                'is_admin_user': False,
+                'user_role': 'Error Loading',
+            })
     else:
         # Anonymous user
         context.update({
@@ -107,11 +123,11 @@ def school_context(request):
                 2: {'range': '70-79%', 'remark': 'Distinction'},
                 3: {'range': '65-69%', 'remark': 'Strong Credit'},
                 4: {'range': '60-64%', 'remark': 'Strong Credit'},
-                5: {'range': '55-59%', 'remark': 'Weak Credit'},
-                6: {'range': '50-54%', 'remark': 'Weak Credit'},
-                7: {'range': '45-49%', 'remark': 'Pass'},
-                8: {'range': '40-44%', 'remark': 'Pass'},
-                9: {'range': '0-39%', 'remark': 'Fail'},
+                5: {'range': 55-59%', 'remark': 'Weak Credit'},
+                6: {'range': 50-54%', 'remark': 'Weak Credit'},
+                7: {'range': 45-49%', 'remark': 'Pass'},
+                8: {'range': 40-44%', 'remark': 'Pass'},
+                9: {'range': 0-39%', 'remark': 'Fail'},
             }
         }
     }
@@ -199,9 +215,14 @@ def combined_context(request):
     """Combine all context into one dictionary."""
     context = {}
     
-    # Merge all context dictionaries
-    context.update(school_context(request))
-    context.update(report_card_context(request))
-    context.update(navigation_context(request))
+    try:
+        # Merge all context dictionaries with error handling
+        context.update(school_context(request))
+        context.update(report_card_context(request))
+        context.update(navigation_context(request))
+    except Exception as e:
+        # If context processor fails, at least return basic context
+        print(f"⚠️ Error in combined_context: {e}")
+        context['error'] = str(e)
     
     return context

@@ -1,35 +1,96 @@
 import os
+import sys
 from pathlib import Path
-
-print("=" * 60)
-print("SETTINGS.PY - DEBUG INFO")
-print("=" * 60)
-print(f"DATABASE_URL: {'✅ SET' if os.environ.get('DATABASE_URL') else '❌ NOT SET'}")
-if os.environ.get('DATABASE_URL'):
-    print(f"DATABASE_URL value: {os.environ.get('DATABASE_URL')[:50]}...")
-print(f"PORT: {os.environ.get('PORT', 'NOT SET')}")
-print(f"DJANGO_SECRET_KEY: {'✅ SET' if os.environ.get('DJANGO_SECRET_KEY') else '❌ NOT SET'}")
-print(f"All env vars: {list(os.environ.keys())}")
-print("=" * 60)
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# ... rest of your settings.py continues ...
 import dj_database_url
-from pathlib import Path
+
+# ==================== DEBUG: ENVIRONMENT CHECK ====================
+print("=" * 80)
+print("DEBUG: CHECKING ENVIRONMENT IN SETTINGS.PY")
+print("=" * 80)
+
+# Check DATABASE_URL
+db_url = os.environ.get('DATABASE_URL')
+print(f"DATABASE_URL in settings.py: {'✅ FOUND' if db_url else '❌ NOT FOUND'}")
+if db_url:
+    print(f"Value: {db_url[:50]}...")
+else:
+    print("⚠️ WARNING: DATABASE_URL not found - will use SQLite")
+    print("This means your data will be LOST on every deployment!")
+    
+# Check DJANGO_SECRET_KEY  
+secret_key = os.environ.get('DJANGO_SECRET_KEY')
+print(f"DJANGO_SECRET_KEY: {'✅ FOUND' if secret_key else '❌ NOT FOUND'}")
+
+# Check DEBUG
+debug_val = os.environ.get('DEBUG', 'False')
+print(f"DEBUG from env: {debug_val}")
+
+# List relevant environment variables
+print("\nRelevant environment variables:")
+for key, value in sorted(os.environ.items()):
+    if any(k in key for k in ['DATABASE', 'SECRET', 'DEBUG', 'PORT', 'POSTGRES']):
+        if 'SECRET' in key or 'KEY' in key or 'PASS' in key:
+            print(f"  {key}: {'*' * 10} (hidden)")
+        else:
+            print(f"  {key}: {value[:100]}...")
+
+print("=" * 80)
+
+# ==================== BASE CONFIGURATION ====================
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==================== SECURITY SETTINGS ====================
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']  # Allow all for Railway deployment
 CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app', 'https://*.railway.app']
+
+# ==================== DATABASE CONFIGURATION ====================
+print("\n🔧 CONFIGURING DATABASE...")
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    print("✅ Using PostgreSQL from Railway...")
+    try:
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=DATABASE_URL,
+                conn_max_age=600,
+                conn_health_checks=True,
+                ssl_require=True
+            )
+        }
+        # Force SSL for Railway PostgreSQL
+        DATABASES['default']['OPTIONS'] = {
+            'sslmode': 'require',
+        }
+        print("✅ PostgreSQL configured with SSL")
+    except Exception as e:
+        print(f"❌ Error configuring PostgreSQL: {e}")
+        print("⚠️ Falling back to SQLite...")
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+else:
+    print("⚠️ DATABASE_URL not found, using SQLite (data will not persist!)")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+print(f"Database engine: {DATABASES['default']['ENGINE']}")
+print("=" * 80)
 
 # ==================== APPLICATION DEFINITION ====================
 INSTALLED_APPS = [
@@ -74,34 +135,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'school_grades.wsgi.application'
-
-# ==================== DATABASE CONFIGURATION ====================
-DATABASE_URL = os.environ.get('DATABASE_URL')
-
-if DATABASE_URL:
-    # PostgreSQL on Railway
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True
-        )
-    }
-    # Force SSL for Railway PostgreSQL
-    DATABASES['default']['OPTIONS'] = {
-        'sslmode': 'require',
-    }
-    print(f"✅ Using PostgreSQL database from Railway (SSL enabled)")
-else:
-    # Fallback to SQLite for local development
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-    print(f"⚠️ Using SQLite - DATABASE_URL not set")
 
 # ==================== PASSWORD VALIDATION ====================
 AUTH_PASSWORD_VALIDATORS = [
@@ -330,19 +363,15 @@ REPORT_CARD = {
     }
 }
 
-# ==================== DEPLOYMENT CHECKS ====================
-# Check if running on Railway
-IS_RAILWAY = 'RAILWAY' in os.environ
-
-# Log deployment info
-print(f"\n{'='*60}")
-print("SCHOOL GRADES SYSTEM - STARTUP")
-print("="*60)
-print(f"Environment: {'🚄 Railway' if IS_RAILWAY else '💻 Local'}")
+# ==================== FINAL STARTUP MESSAGE ====================
+print("\n" + "=" * 80)
+print("SCHOOL GRADES SYSTEM - SETTINGS LOADED")
+print("=" * 80)
+print(f"Environment: {'🚄 Railway' if 'RAILWAY' in os.environ else '💻 Local'}")
 print(f"Debug Mode: {'✅ ON' if DEBUG else '❌ OFF'}")
 print(f"Database: {'✅ PostgreSQL' if DATABASE_URL else '⚠️ SQLite'}")
 print(f"Allowed Hosts: {ALLOWED_HOSTS}")
-print("="*60)
+print("=" * 80)
 
 # Check if logo exists
 LOGO_FULL_PATH = os.path.join(LOGO_DIR, 'Fortune Seekers LOGO.png')
@@ -351,18 +380,6 @@ if os.path.exists(LOGO_FULL_PATH):
 else:
     print(f"⚠️ School logo not found at: {LOGO_FULL_PATH}")
 
-# Test database connection on startup
-try:
-    from django.db import connections
-    db_conn = connections['default']
-    db_conn.cursor()
-    print("✅ Database connection successful")
-except Exception as e:
-    print(f"⚠️ Database connection test: {e}")
-
-print("="*60)
-print("Settings loaded successfully!")
-print("="*60 + "\n")
-
-
-
+print("=" * 80)
+print("Settings loaded successfully! Ready to start Django.")
+print("=" * 80 + "\n")

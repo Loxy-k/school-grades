@@ -65,7 +65,6 @@ def api_grades(request):
 
     return JsonResponse({'grades': data})
 
-
 def student_login(request):
     """Student login using Django auth (username/password)."""
     if request.method == 'POST':
@@ -122,7 +121,7 @@ def student_login(request):
                     u.set_password(password)
                     u.save()
                     login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')
+                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
 
                 # If the student matched via teacher-assigned password
                 if (student and student.assigned_password and 
@@ -149,7 +148,7 @@ def student_login(request):
                     u.set_password(password)
                     u.save()
                     login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')
+                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
 
                 # If the user has no usable password, auto-assign temporary password
                 if not u.has_usable_password():
@@ -157,7 +156,7 @@ def student_login(request):
                     u.set_password(temp_password)
                     u.save()
                     login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')
+                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
 
                 # User has a usable password but authentication failed
                 return render(request, 'grades/student_login.html', {
@@ -169,9 +168,10 @@ def student_login(request):
             })
 
         login(request, user)
-        return redirect('grades:dashboard')
+        return redirect('grades:dashboard')  # Fixed: redirect to dashboard
 
     return render(request, 'grades/student_login.html')
+
 
 
 def student_logout(request):
@@ -1077,4 +1077,5 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 

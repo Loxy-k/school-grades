@@ -66,114 +66,85 @@ def api_grades(request):
     return JsonResponse({'grades': data})
 
 def student_login(request):
-    """Student login using Django auth (username/password)."""
+    """Simple student login using student_id and password."""
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
         
         if not username or not password:
             return render(request, 'grades/student_login.html', {
-                'error': 'Please provide username and password'
+                'error': 'Please provide both username and password'
             })
 
+        # OPTION 1: Try Django authentication first
         user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('grades:dashboard')
         
-        if user is None:
-            # Fallback: support two student login methods
-            student = None
+        # OPTION 2: Try student_id + password
+        try:
+            # Look for student by student_id
+            student = Student.objects.get(student_id=username)
             
-            # Try match by student_id first
-            try:
-                student = Student.objects.get(student_id=username)
-            except Student.DoesNotExist:
-                # Try match by first name (case-insensitive) and assigned_password
-                try:
-                    student = Student.objects.get(
-                        first_name__iexact=username,
-                        assigned_password=password
-                    )
-                except Student.DoesNotExist:
-                    student = None
-
-            if student:
+            # Check if this is a teacher-assigned password
+            if student.assigned_password and student.assigned_password == password:
+                # Get or create user for this student
                 User = get_user_model()
+                user, created = User.objects.get_or_create(
+                    username=f"stu_{student.student_id}",
+                    defaults={'email': f'{student.student_id}@fortuneschool.edu'}
+                )
                 
-                # Ensure there's a linked Django user
-                if student.user:
-                    u = student.user
-                else:
-                    username_field = f"stu_{student.student_id}"
-                    if not User.objects.filter(username=username_field).exists():
-                        u = User.objects.create_user(
-                            username=username_field,
-                            email=f'{student.student_id}@example.com'
-                        )
-                        u.set_unusable_password()
-                        u.save()
-                        student.user = u
-                        student.save()
-                    else:
-                        u = User.objects.get(username=username_field)
-
-                # If the student matched via the student's ID used as password
-                if student and student.first_name.lower() == username.lower() and password == student.student_id:
-                    # Set the user's password to the student_id and log them in
-                    u.set_password(password)
-                    u.save()
-                    login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
-
-                # If the student matched via teacher-assigned password
-                if (student and student.assigned_password and 
-                    student.first_name.lower() == username.lower() and 
-                    student.assigned_password == password):
-                    
-                    # Ensure linked user exists
-                    username_field = f"stu_{student.student_id}"
-                    User = get_user_model()
-                    if not student.user:
-                        if not User.objects.filter(username=username_field).exists():
-                            u = User.objects.create_user(
-                                username=username_field,
-                                email=f'{student.student_id}@example.com'
-                            )
-                        else:
-                            u = User.objects.get(username=username_field)
-                        student.user = u
-                        student.save()
-                    else:
-                        u = student.user
-
-                    # Set the user's password to the assigned password and log them in
-                    u.set_password(password)
-                    u.save()
-                    login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
-
-                # If the user has no usable password, auto-assign temporary password
-                if not u.has_usable_password():
-                    temp_password = student.student_id
-                    u.set_password(temp_password)
-                    u.save()
-                    login(request, u, backend='django.contrib.auth.backends.ModelBackend')
-                    return redirect('grades:dashboard')  # Fixed: redirect to dashboard
-
-                # User has a usable password but authentication failed
+                # Link student to user if not linked
+                if not student.user:
+                    student.user = user
+                    student.save()
+                
+                # Set password and login
+                user.set_password(password)
+                user.save()
+                login(request, user)
+                return redirect('grades:dashboard')
+            
+            # OPTION 3: Try using student_id as password (for initial login)
+            elif password == student.student_id:
+                # Get or create user for this student
+                User = get_user_model()
+                user, created = User.objects.get_or_create(
+                    username=f"stu_{student.student_id}",
+                    defaults={'email': f'{student.student_id}@fortuneschool.edu'}
+                )
+                
+                # Link student to user if not linked
+                if not student.user:
+                    student.user = user
+                    student.save()
+                
+                # Set password and login
+                user.set_password(password)
+                user.save()
+                login(request, user)
+                return redirect('grades:dashboard')
+                
+            else:
                 return render(request, 'grades/student_login.html', {
-                    'error': 'Invalid credentials'
+                    'error': 'Invalid student ID or password'
                 })
-
+                
+        except Student.DoesNotExist:
+            # Student not found by student_id
             return render(request, 'grades/student_login.html', {
-                'error': 'Invalid credentials'
+                'error': 'Student ID not found'
+            })
+        except Student.MultipleObjectsReturned:
+            # Multiple students found (shouldn't happen with student_id)
+            return render(request, 'grades/student_login.html', {
+                'error': 'Multiple students found with same ID. Contact administrator.'
             })
 
-        login(request, user)
-        return redirect('grades:dashboard')  # Fixed: redirect to dashboard
-
+    # GET request - show login form
     return render(request, 'grades/student_login.html')
-
-
-
 def student_logout(request):
     """Logout the current user."""
     logout(request)
@@ -1077,5 +1048,6 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 

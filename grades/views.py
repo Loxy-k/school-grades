@@ -406,90 +406,115 @@ def report_card(request):
     
     return render(request, 'grades/report_card.html', context)
 def _generate_pdf_for_student(student, term):
-    """Helper to generate PDF for a student."""
+    """Generate PDF report for a student."""
     try:
-        from weasyprint import HTML
-        from weasyprint.text.fonts import FontConfiguration
+        # Convert term to database format
+        term_in_db = get_term_in_db_format(term)
+        term_display = get_term_display(term)
         
-        # Convert term to database format if needed
-        if term in ['T1', 'T2', 'T3']:
-            term_in_db = get_term_in_db_format(term)
-            term_display = get_term_display(term)
-        else:
-            term_in_db = term
-            term_display = term
+        # Get grades for this term
+        grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
         
-        standard_subjects = [
-            'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
-            'Chichewa', 'English', 'Geography', 'History', 
-            'Mathematics', 'Physics', 'Social & Life Skills'
-        ]
-        
-        subjects_data = []
-        for subject_name in standard_subjects:
-            # Get subject with case-insensitive lookup
-            try:
-                subject = Subject.objects.get(name__iexact=subject_name)
-            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
-                subject = None
-            
-            if subject:
-                grade = Grade.objects.filter(
-                    student=student, 
-                    subject=subject, 
-                    term=term_in_db
-                ).first()
-            else:
-                grade = None
-            
-            subject_info = {
-                'name': subject_name,
-                'has_grade': grade is not None,
-            }
-            
-            if grade:
-                score = float(grade.score)
-                subject_info.update({
-                    'score': score,
-                    'grade_display': grade.get_grade_display(),
-                    'remarks': grade.grade_label().split('(')[-1].rstrip(')') if '(' in grade.grade_label() else '',
-                })
-            
-            subjects_data.append(subject_info)
-        
+        # Prepare context
         context = {
             'student': student,
-            'school': {'name': 'Fortune Seekers School'},  # Add school info
-            'subjects': subjects_data,
+            'grades': grades,
             'term_display': term_display,
             'current_date': timezone.now().strftime("%B %d, %Y"),
             'form_teacher_remarks': student.form_teacher_remarks or '',
             'head_teacher_remarks': student.head_teacher_remarks or '',
+            'passed_count': sum(1 for grade in grades if grade.is_pass()),
+            'overall_result': 'PASS' if sum(1 for grade in grades if grade.is_pass()) >= len(grades)/2 else 'FAIL',
         }
         
-        # Render HTML
-        html_string = render_to_string('grades/report_pdf.html', context)
-        
-        # Generate PDF with font configuration
-        font_config = FontConfiguration()
-        html = HTML(string=html_string)
-        
-        # Try with different options
+        # Try WeasyPrint first
         try:
-            pdf_bytes = html.write_pdf(font_config=font_config)
-        except AttributeError:
-            # Fallback: Try without font_config
+            from weasyprint import HTML
+            from weasyprint.text.fonts import FontConfiguration
+            
+            # Use a simpler template for WeasyPrint
+            html_string = render_to_string('grades/report_pdf_weasy.html', context)
+            html = HTML(string=html_string)
             pdf_bytes = html.write_pdf()
-        
-        return pdf_bytes
-        
-    except ImportError:
-        print("WeasyPrint not installed")
-        return None
+            
+            return pdf_bytes
+            
+        except ImportError:
+            print("WeasyPrint not installed, trying ReportLab...")
+            # Fallback to ReportLab
+            return _generate_pdf_with_reportlab(student, term_in_db, term_display)
+            
     except Exception as e:
         print(f"PDF generation error: {e}")
         import traceback
         traceback.print_exc()
+        return None
+
+
+def _generate_pdf_with_reportlab(student, term_in_db, term_display):
+    """Fallback PDF generation using ReportLab."""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        from reportlab.lib import colors
+        import io
+        
+        # Get grades
+        grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
+        
+        # Create PDF
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+        
+        # Header
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(50, height - 50, "FORTUNE SEEKERS SCHOOL")
+        p.setFont("Helvetica", 12)
+        p.drawString(50, height - 70, "Academic Report Card")
+        
+        # Student Info
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(50, height - 100, f"Student: {student.first_name} {student.last_name}")
+        p.drawString(50, height - 115, f"ID: {student.student_id}")
+        p.drawString(50, height - 130, f"Form: {student.get_form_display()}")
+        p.drawString(50, height - 145, f"Term: {term_display}")
+        p.drawString(50, height - 160, f"Date: {timezone.now().strftime('%B %d, %Y')}")
+        
+        # Grades Table Header
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(50, height - 190, "Subject")
+        p.drawString(250, height - 190, "Score")
+        p.drawString(350, height - 190, "Grade")
+        
+        # Grades
+        y_position = height - 210
+        p.setFont("Helvetica", 10)
+        
+        for grade in grades:
+            p.drawString(50, y_position, grade.subject.name)
+            p.drawString(250, y_position, f"{float(grade.score):.1f}")
+            p.drawString(350, y_position, grade.get_grade_display())
+            y_position -= 15
+            
+            if y_position < 100:  # New page if needed
+                p.showPage()
+                y_position = height - 50
+                p.setFont("Helvetica", 10)
+        
+        # Footer
+        p.setFont("Helvetica", 8)
+        p.drawString(50, 50, "Official Document - Fortune Seekers School")
+        
+        p.save()
+        buffer.seek(0)
+        return buffer.getvalue()
+        
+    except ImportError:
+        print("ReportLab not installed")
+        return None
+    except Exception as e:
+        print(f"ReportLab PDF error: {e}")
         return None
 @login_required
 def download_report_pdf(request):
@@ -755,8 +780,6 @@ def class_ranking_report(request):
 def download_class_ranking_pdf(request):
     """Download class ranking as PDF."""
     try:
-        from weasyprint import HTML
-        
         form = request.GET.get('form', 'F1')
         term_code = request.GET.get('term', 'T1')
         term_in_db = get_term_in_db_format(term_code)
@@ -767,153 +790,58 @@ def download_class_ranking_pdf(request):
         if not students.exists():
             return HttpResponse("No students found.", status=404)
         
-        # Get all subjects
-        standard_subjects = [
-            'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
-            'Chichewa', 'English', 'Geography', 'History', 
-            'Mathematics', 'Physics', 'Social & Life Skills'
-        ]
-        
-        subjects = []
-        for subject_name in standard_subjects:
-            try:
-                subject = Subject.objects.get(name__iexact=subject_name)
-                subjects.append(subject)
-            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
-                subject = Subject.objects.create(name=subject_name, available_for='ALL')
-                subjects.append(subject)
-        
-        # Prepare student data
+        # Prepare data
         students_data = []
-        all_scores_by_subject = {subject.name: [] for subject in subjects}
-        
         for student in students:
-            subject_scores = []
-            total_score = 0
-            subjects_with_grades = 0
-            passed_subjects = 0
+            grades = Grade.objects.filter(student=student, term=term_in_db)
             
-            for subject in subjects:
-                grade = Grade.objects.filter(
-                    student=student, 
-                    subject=subject, 
-                    term=term_in_db
-                ).first()
-                
-                if grade:
-                    score = float(grade.score)
-                    total_score += score
-                    subjects_with_grades += 1
-                    is_pass = grade.is_pass()
-                    
-                    if is_pass:
-                        passed_subjects += 1
-                    
-                    subject_scores.append({
-                        'score': score,
-                        'is_pass': is_pass,
-                        'display': f"{score:.1f}",
-                    })
-                    
-                    all_scores_by_subject[subject.name].append({
-                        'score': score,
-                        'is_pass': is_pass,
-                    })
-                else:
-                    subject_scores.append({
-                        'score': None,
-                        'is_pass': None,
-                        'display': '-',
-                    })
-            
-            avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
-            overall_pass = (passed_subjects / subjects_with_grades * 100) >= 50 if subjects_with_grades > 0 else False
+            if grades.exists():
+                total_score = sum(float(g.score) for g in grades)
+                passed_count = sum(1 for g in grades if g.is_pass())
+            else:
+                total_score = 0
+                passed_count = 0
             
             students_data.append({
                 'student': student,
-                'subject_scores': subject_scores,
-                'avg_score': avg_score,
                 'total_score': total_score,
-                'passed_subjects': passed_subjects,
-                'total_subjects_taken': subjects_with_grades,
-                'overall_pass': overall_pass,
-                'comment': 'PASS' if overall_pass else 'FAIL',
+                'passed_count': passed_count,
+                'total_grades': grades.count(),
             })
         
         # Sort by total score
         students_data.sort(key=lambda x: x['total_score'], reverse=True)
         
-        # Assign positions
-        for i, data in enumerate(students_data):
-            data['position'] = i + 1
-        
-        # Calculate statistics
-        class_stats = {
-            'total_students': len(students_data),
-            'passing_students': sum(1 for data in students_data if data['overall_pass']),
-            'failing_students': sum(1 for data in students_data if not data['overall_pass']),
-            'overall_passing_percentage': (sum(1 for data in students_data if data['overall_pass']) / len(students_data) * 100) if students_data else 0,
-        }
-        
-        # Subject stats
-        subject_stats = []
-        for subject in subjects:
-            scores = all_scores_by_subject[subject.name]
-            valid_scores = [s for s in scores if s['score'] is not None]
+        # Try WeasyPrint first
+        try:
+            from weasyprint import HTML
             
-            if valid_scores:
-                passing_count = sum(1 for s in valid_scores if s['is_pass'])
-                total_count = len(valid_scores)
-                passing_percentage = (passing_count / total_count * 100) if total_count > 0 else 0
-                
-                subject_stats.append({
-                    'name': subject.name,
-                    'total_taken': total_count,
-                    'passing_count': passing_count,
-                    'passing_percentage': passing_percentage,
-                    'average_score': sum(s['score'] for s in valid_scores) / total_count if total_count > 0 else 0,
-                })
-        
-        # Sort subject stats
-        subject_stats.sort(key=lambda x: x['passing_percentage'], reverse=True)
-        
-        # Fix for template error - use list indexing instead of |last filter
-        best_subject = subject_stats[0] if subject_stats else None
-        worst_subject = subject_stats[-1] if subject_stats else None
-        
-        context = {
-            'form': form,
-            'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
-            'term': term_code,
-            'term_display': term_display,
-            'students_data': students_data,
-            'subjects': subjects,
-            'subject_stats': subject_stats,
-            'class_stats': class_stats,
-            'best_subject': best_subject,
-            'worst_subject': worst_subject,
-            'school_settings': SCHOOL_SETTINGS,
-            'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
-        }
-        
-        # Render PDF
-        html_string = render_to_string('grades/class_ranking_pdf.html', context)
-        html = HTML(string=html_string)
-        pdf_bytes = html.write_pdf()
-        
-        # Return PDF
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-        
-    except ImportError:
-        # Fallback: Show HTML page for printing if WeasyPrint not installed
-        messages.error(request, 'PDF generation requires WeasyPrint. Showing HTML version for printing.')
-        return redirect(f"{request.path.replace('-pdf', '')}?form={request.GET.get('form')}&term={request.GET.get('term')}")
+            context = {
+                'form': form,
+                'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
+                'term': term_code,
+                'term_display': term_display,
+                'students_data': students_data,
+                'total_students': len(students_data),
+                'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
+            }
+            
+            html_string = render_to_string('grades/class_ranking_pdf.html', context)
+            html = HTML(string=html_string)
+            pdf_bytes = html.write_pdf()
+            
+            # Return PDF
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+        except ImportError:
+            # Fallback to simple HTML with print option
+            messages.warning(request, 'PDF generation is not available. Use the print button instead.')
+            return redirect(f'{reverse("grades:class_ranking")}?form={form}&term={term_code}')
+            
     except Exception as e:
         import traceback
         traceback.print_exc()
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
-
-

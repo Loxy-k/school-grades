@@ -3,4 +3,8 @@ gunicorn==23.0.0
 whitenoise==6.11.0
 psycopg2-binary==2.9.11
 dj-database-url==3.0.1
-weasyprint==52.5
+weasyprint==62.1
+cffi==1.16.0
+Pillow==10.3.0
+reportlab==4.0.9
+xhtml2pdf==0.2.13

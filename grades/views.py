@@ -365,7 +365,18 @@ def report_card(request):
     
     subjects_data = []
     for subject_name in standard_subjects:
-        subject, created = Subject.objects.get_or_create(name=subject_name)
+        # SAFE: Get subject with case-insensitive lookup
+        try:
+            # Try exact match
+            subject = Subject.objects.get(name=subject_name)
+        except Subject.DoesNotExist:
+            try:
+                # Try case-insensitive
+                subject = Subject.objects.get(name__iexact=subject_name)
+            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+                # If still not found or multiple, create new
+                subject = Subject.objects.create(name=subject_name)
+        
         grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()
         
         subject_info = {
@@ -394,8 +405,6 @@ def report_card(request):
     }
     
     return render(request, 'grades/report_card.html', context)
-
-
 def _generate_pdf_for_student(student, term):
     """Helper to generate PDF for a student."""
     try:
@@ -417,8 +426,26 @@ def _generate_pdf_for_student(student, term):
         
         subjects_data = []
         for subject_name in standard_subjects:
-            subject, created = Subject.objects.get_or_create(name=subject_name)
-            grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()
+            # SAFE: Get subject with case-insensitive lookup
+            try:
+                # Try exact match
+                subject = Subject.objects.get(name=subject_name)
+            except Subject.DoesNotExist:
+                try:
+                    # Try case-insensitive
+                    subject = Subject.objects.get(name__iexact=subject_name)
+                except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+                    # If still not found or multiple, skip
+                    subject = None
+            
+            if subject:
+                grade = Grade.objects.filter(
+                    student=student, 
+                    subject=subject, 
+                    term=term_in_db
+                ).first()
+            else:
+                grade = None
             
             subject_info = {
                 'name': subject_name,
@@ -458,9 +485,9 @@ def _generate_pdf_for_student(student, term):
         return None
     except Exception as e:
         print(f"PDF generation error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
-
-
 @login_required
 def download_report_pdf(request):
     """Download student report as PDF."""
@@ -661,6 +688,7 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 
 

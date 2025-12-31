@@ -794,23 +794,25 @@ def class_ranking_report(request):
     
     return render(request, 'grades/class_ranking.html', context)
 
-
 @login_required
 @user_passes_test(is_staff_user)
 def download_class_ranking_pdf(request):
-    """Download class ranking as PDF - using ReportLab."""
+    """Download class ranking as PDF with logo and improved formatting."""
     try:
         from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
+        from reportlab.lib.units import inch
         import io
+        import os
+        from django.conf import settings
         
         form = request.GET.get('form', 'F1')
         term_code = request.GET.get('term', 'T1')
         term_display = get_term_display(term_code)
         
-        # Get data using the same logic as class_ranking_report
+        # Get data
         term_in_db = get_term_in_db_format(term_code)
         students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
         
@@ -833,14 +835,17 @@ def download_class_ranking_pdf(request):
                 subject = Subject.objects.create(name=subject_name, available_for='ALL')
                 subjects.append(subject)
         
-        # Prepare student data
+        # Prepare student data with detailed subject scores
         students_data = []
+        all_scores_by_subject = {subject.name: [] for subject in subjects}
+        
         for student in students:
+            subject_scores = []
             total_score = 0
             subjects_with_grades = 0
             passed_subjects = 0
             
-            # Calculate scores
+            # Get grades for each subject
             for subject in subjects:
                 grade = Grade.objects.filter(
                     student=student, 
@@ -849,25 +854,82 @@ def download_class_ranking_pdf(request):
                 ).first()
                 
                 if grade:
-                    total_score += float(grade.score)
+                    score = float(grade.score)
+                    total_score += score
                     subjects_with_grades += 1
-                    if grade.is_pass():
+                    is_pass = grade.is_pass()
+                    
+                    if is_pass:
                         passed_subjects += 1
+                    
+                    subject_scores.append({
+                        'score': score,
+                        'is_pass': is_pass,
+                        'display': f"{score:.1f}",
+                    })
+                    
+                    all_scores_by_subject[subject.name].append({
+                        'score': score,
+                        'is_pass': is_pass,
+                    })
+                else:
+                    subject_scores.append({
+                        'score': None,
+                        'is_pass': None,
+                        'display': '',  # Leave blank for subjects not taken
+                    })
             
             avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
             overall_pass = (passed_subjects / subjects_with_grades * 100) >= 50 if subjects_with_grades > 0 else False
             
             students_data.append({
                 'student': student,
-                'total_score': total_score,
+                'subject_scores': subject_scores,
                 'avg_score': avg_score,
+                'total_score': total_score,
                 'passed_subjects': passed_subjects,
                 'total_subjects_taken': subjects_with_grades,
                 'overall_pass': overall_pass,
+                'comment': 'PASS' if overall_pass else 'FAIL',
             })
         
-        # Sort by total score
+        # Sort by total score (highest to lowest)
         students_data.sort(key=lambda x: x['total_score'], reverse=True)
+        
+        # Assign positions
+        for i, data in enumerate(students_data):
+            data['position'] = i + 1
+        
+        # Calculate statistics
+        class_stats = {
+            'total_students': len(students_data),
+            'passing_students': sum(1 for data in students_data if data['overall_pass']),
+            'failing_students': sum(1 for data in students_data if not data['overall_pass']),
+            'overall_passing_percentage': (sum(1 for data in students_data if data['overall_pass']) / len(students_data) * 100) if students_data else 0,
+        }
+        
+        # Subject stats
+        subject_stats = []
+        for subject in subjects:
+            scores = all_scores_by_subject[subject.name]
+            valid_scores = [s for s in scores if s['score'] is not None]
+            
+            if valid_scores:
+                passing_count = sum(1 for s in valid_scores if s['is_pass'])
+                total_count = len(valid_scores)
+                passing_percentage = (passing_count / total_count * 100) if total_count > 0 else 0
+                
+                subject_stats.append({
+                    'name': subject.name,
+                    'short_name': subject.name[:3].upper(),
+                    'total_taken': total_count,
+                    'passing_count': passing_count,
+                    'passing_percentage': passing_percentage,
+                    'average_score': sum(s['score'] for s in valid_scores) / total_count if total_count > 0 else 0,
+                })
+        
+        # Sort subject stats
+        subject_stats.sort(key=lambda x: x['passing_percentage'], reverse=True)
         
         # Create PDF
         buffer = io.BytesIO()
@@ -883,61 +945,160 @@ def download_class_ranking_pdf(request):
         elements = []
         styles = getSampleStyleSheet()
         
-        # Header
-        elements.append(Paragraph(f"<b>CLASS RANKING REPORT - {dict(Student.FORM_CHOICES).get(form, f'Form {form}')} {term_display}</b>", styles['Heading1']))
+        # Create custom styles
+        header_style = ParagraphStyle(
+            'HeaderStyle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#1e3c72'),
+            alignment=1,  # Center
+            spaceAfter=6,
+        )
+        
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#dc3545'),
+            alignment=1,
+            spaceAfter=10,
+        )
+        
+        # Check if logo exists
+        logo_path = os.path.join(settings.BASE_DIR, 'grades', 'static', 'grades', 'images', 'Fortune Seekers LOGO.png')
+        logo_exists = os.path.exists(logo_path)
+        
+        # Create header with logo
+        if logo_exists:
+            try:
+                # Header with logo on left, text on right
+                header_data = [
+                    [Image(logo_path, width=70, height=70), 
+                     Paragraph("<b>FORTUNE SEEKERS<br/>PRIVATE SECONDARY SCHOOL</b>", header_style)]
+                ]
+                
+                header_table = Table(header_data, colWidths=[100, 500])
+                header_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                    ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ]))
+                
+                elements.append(header_table)
+            except:
+                # Fallback: Text-only header
+                elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", header_style))
+        else:
+            # Text-only header
+            elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", header_style))
+        
+        # School motto
+        elements.append(Paragraph('<i>"Where Knowledge Grows Like a Mustard Seed!"</i>', ParagraphStyle(
+            'MottoStyle',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=colors.HexColor('#2a5298'),
+            alignment=1,
+            spaceAfter=10,
+        )))
+        
+        # Main title - BOLD WORDS as requested
+        form_display = dict(Student.FORM_CHOICES).get(form, f"Form {form}")
+        elements.append(Paragraph(f"<b>END OF {term_display.upper()} EXAMINATION RESULTS FOR {form_display.upper()}</b>", title_style))
         elements.append(Paragraph(f"Academic Year: {SCHOOL_SETTINGS['ACADEMIC_YEAR']}", styles['Normal']))
         elements.append(Paragraph(f"Generated: {timezone.now().strftime('%B %d, %Y %H:%M')}", styles['Normal']))
         elements.append(Spacer(1, 15))
         
-        # Students Table
-        table_data = [
-            ["Position", "Student Name", "Student ID", "Average Score", "Passed Subjects", "Total Subjects", "Status"]
+        # Class Ranking Table Header
+        table_header = [
+            ["Position", "Student Name", "Student ID"] + 
+            [subject.name[:3].upper() for subject in subjects] + 
+            ["Result"]
         ]
         
-        for i, data in enumerate(students_data):
-            position = i + 1
-            status = "PASS" if data['overall_pass'] else "FAIL"
-            status_color = colors.green if data['overall_pass'] else colors.red
-            
-            table_data.append([
-                str(position),
-                f"{data['student'].first_name} {data['student'].last_name}",
-                data['student'].student_id,
-                f"{data['avg_score']:.1f}",
-                str(data['passed_subjects']),
-                str(data['total_subjects_taken']),
-                status
-            ])
+        # Prepare table data
+        table_data = table_header.copy()
         
-        table = Table(table_data, colWidths=[60, 150, 100, 80, 80, 80, 60])
-        table.setStyle(TableStyle([
+        for data in students_data:
+            student = data['student']
+            row = [
+                str(data['position']),
+                f"{student.first_name} {student.last_name}",
+                student.student_id
+            ]
+            
+            # Add subject scores (leave blank if not taken)
+            for score in data['subject_scores']:
+                row.append(score['display'])  # Will be blank if no grade
+            
+            # Add PASS/FAIL result
+            row.append(data['comment'])
+            
+            table_data.append(row)
+        
+        # Calculate column widths
+        num_subjects = len(subjects)
+        total_width = 750  # Total available width in points
+        fixed_cols_width = 150 + 200 + 100  # Position + Name + ID columns
+        remaining_width = total_width - fixed_cols_width - 80  # Subtract result column width
+        subject_col_width = remaining_width / num_subjects if num_subjects > 0 else 40
+        
+        col_widths = [50, 150, 100] + [subject_col_width] * num_subjects + [80]
+        
+        # Create main table
+        main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        main_table.setStyle(TableStyle([
+            # Header styling
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            
+            # Grid and borders
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            
+            # Alternate row colors
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-            ('TEXTCOLOR', (6, 1), (6, -1), status_color),
+            
+            # Position column styling
+            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+            
+            # Name column alignment
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+            ('LEFTPADDING', (1, 1), (1, -1), 5),
+            
+            # Result column coloring
+            ('TEXTCOLOR', (-1, 1), (-1, -1), colors.green),
+            ('FONTNAME', (-1, 1), (-1, -1), 'Helvetica-Bold'),
+            
+            # Cell padding
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            
+            # Highlight top 3 positions
+            ('TEXTCOLOR', (0, 1), (0, 1), colors.yellow),  # 1st position
+            ('TEXTCOLOR', (0, 2), (0, 2), colors.silver),   # 2nd position
+            ('TEXTCOLOR', (0, 3), (0, 3), colors.orange),   # 3rd position
         ]))
         
-        elements.append(table)
+        elements.append(main_table)
         elements.append(Spacer(1, 20))
         
-        # Statistics
-        total_students = len(students_data)
-        passing_students = sum(1 for d in students_data if d['overall_pass'])
-        passing_percentage = (passing_students / total_students * 100) if total_students > 0 else 0
+        # Statistics Section
+        elements.append(Paragraph("<b>CLASS STATISTICS</b>", styles['Heading3']))
         
-        stats_data = [
-            ["Total Students", f"{total_students}"],
-            ["Students Passed", f"{passing_students}"],
-            ["Students Failed", f"{total_students - passing_students}"],
-            ["Overall Passing Rate", f"{passing_percentage:.1f}%"],
+        # Overall class statistics
+        stats_data1 = [
+            ["Total Students", f"{class_stats['total_students']}"],
+            ["Students Passed", f"{class_stats['passing_students']}"],
+            ["Students Failed", f"{class_stats['failing_students']}"],
+            ["Overall Passing Rate", f"{class_stats['overall_passing_percentage']:.1f}%"],
         ]
         
-        stats_table = Table(stats_data, colWidths=[150, 100])
-        stats_table.setStyle(TableStyle([
+        stats_table1 = Table(stats_data1, colWidths=[150, 100])
+        stats_table1.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -945,13 +1106,69 @@ def download_class_ranking_pdf(request):
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
         ]))
         
-        elements.append(stats_table)
+        elements.append(stats_table1)
+        elements.append(Spacer(1, 15))
+        
+        # Subject-wise statistics
+        if subject_stats:
+            elements.append(Paragraph("<b>SUBJECT-WISE PERFORMANCE</b>", styles['Heading3']))
+            
+            # Prepare subject stats table
+            subject_stats_header = ["Subject", "Students Taken", "Passed", "Passing %", "Average Score"]
+            subject_stats_data = [subject_stats_header]
+            
+            for stat in subject_stats:
+                subject_stats_data.append([
+                    stat['name'],
+                    str(stat['total_taken']),
+                    str(stat['passing_count']),
+                    f"{stat['passing_percentage']:.1f}%",
+                    f"{stat['average_score']:.1f}",
+                ])
+            
+            subject_stats_table = Table(subject_stats_data, colWidths=[150, 80, 60, 80, 80])
+            subject_stats_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2a5298')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ]))
+            
+            elements.append(subject_stats_table)
+        
+        elements.append(Spacer(1, 20))
+        
+        # Legend/Notes
+        notes_data = [
+            ["Note:", "Subjects shown with 3-letter abbreviations"],
+            ["", "Blank cells indicate subject not taken/written"],
+            ["", f"Passing criteria: ≥50% of subjects passed"],
+            ["", f"Total subjects offered: {len(subjects)}"],
+        ]
+        
+        notes_table = Table(notes_data, colWidths=[80, 400])
+        notes_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#1e3c72')),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ]))
+        
+        elements.append(notes_table)
         
         # Footer
         elements.append(Spacer(1, 20))
         elements.append(Paragraph(
-            f"{SCHOOL_SETTINGS['NAME']} • Academic Affairs Department",
+            f"{SCHOOL_SETTINGS['ADDRESS']} | Tel: {', '.join(SCHOOL_SETTINGS['CONTACT_PHONES'])}",
             styles['Normal']
+        ))
+        elements.append(Paragraph(
+            "Academic Affairs Department • Official Examination Results",
+            styles['Italic']
         ))
         
         # Build PDF
@@ -960,7 +1177,7 @@ def download_class_ranking_pdf(request):
         
         # Return PDF
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-        filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
+        filename = f"Class_Ranking_{form_display.replace(' ', '_')}_{term_display.replace(' ', '_')}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
         
@@ -970,8 +1187,6 @@ def download_class_ranking_pdf(request):
         # Fallback: redirect to printable HTML version
         messages.info(request, 'Use the PRINT button on the class ranking page for best results.')
         return redirect(f'{reverse("grades:class_ranking")}?form={request.GET.get("form")}&term={request.GET.get("term")}')
-
-
 @login_required
 @user_passes_test(is_staff_user)
 def bulk_download_reports(request):
@@ -1009,4 +1224,5 @@ def bulk_download_reports(request):
     response = HttpResponse(zip_buffer, content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_code}.zip"'
     return response
+
 

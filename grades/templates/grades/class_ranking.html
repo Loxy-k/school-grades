@@ -4,116 +4,216 @@
 
 {% block extra_css %}
 <style>
+    .ranking-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    
+    .header-title {
+        text-align: center;
+        color: #1e3c72;
+        font-weight: bold;
+        font-size: 24px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #1e3c72;
+    }
+    
+    .term-info {
+        text-align: center;
+        font-size: 18px;
+        color: #2a5298;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    
+    .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+    
     .ranking-table th {
         background-color: #1e3c72;
         color: white;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: bold;
+        border: 1px solid #1e3c72;
         position: sticky;
         top: 0;
         z-index: 10;
     }
     
-    .ranking-table td.position-cell {
+    .ranking-table td {
+        padding: 8px;
+        border: 1px solid #dee2e6;
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .position-cell {
         font-weight: bold;
         text-align: center;
-        background-color: #f8f9fa;
         width: 60px;
+        background-color: #f8f9fa;
     }
     
-    .position-1 { color: #ffd700; font-weight: bold; }
-    .position-2 { color: #c0c0c0; font-weight: bold; }
-    .position-3 { color: #cd7f32; font-weight: bold; }
-    
-    .score-cell {
-        text-align: center;
-        font-weight: 500;
-        min-width: 70px;
+    .position-1 { 
+        color: #ffd700; 
+        background-color: #fff8e1;
     }
-    
-    .score-pass { background-color: #d4edda !important; }
-    .score-fail { background-color: #f8d7da !important; }
-    .score-absent { background-color: #e9ecef !important; color: #6c757d; font-style: italic; }
+    .position-2 { 
+        color: #c0c0c0; 
+        background-color: #f5f5f5;
+    }
+    .position-3 { 
+        color: #cd7f32; 
+        background-color: #fff3e0;
+    }
     
     .student-name-cell {
-        font-weight: 500;
+        text-align: left;
         min-width: 200px;
+        font-weight: 500;
     }
     
-    .summary-card {
-        border-radius: 8px;
-        border: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    .score-cell {
+        width: 70px;
+        font-weight: 500;
+    }
+    
+    .score-pass { 
+        background-color: #d4edda !important; 
+        color: #155724;
+    }
+    
+    .score-fail { 
+        background-color: #f8d7da !important; 
+        color: #721c24;
+    }
+    
+    .score-empty {
+        background-color: #f8f9fa !important;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    .comment-pass {
+        background-color: #d4edda !important;
+        color: #155724;
+        font-weight: bold;
+        text-align: center;
+    }
+    
+    .comment-fail {
+        background-color: #f8d7da !important;
+        color: #721c24;
+        font-weight: bold;
+        text-align: center;
     }
     
     .subject-header {
         writing-mode: vertical-lr;
         transform: rotate(180deg);
         text-align: center;
-        padding: 10px 5px;
+        padding: 10px 3px;
         white-space: nowrap;
-        font-weight: 500;
-        background-color: #f8f9fa;
+        font-weight: bold;
+        font-size: 11px;
+        background-color: #2a5298;
+        color: white;
         border-left: 1px solid #dee2e6;
+        min-height: 120px;
     }
     
-    .table-container {
-        max-height: 70vh;
-        overflow-x: auto;
-        overflow-y: auto;
+    .stats-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 30px;
+    }
+    
+    .stats-table th {
+        background-color: #28a745;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .stats-table td {
+        padding: 8px;
         border: 1px solid #dee2e6;
+        text-align: center;
+    }
+    
+    .stats-header {
+        background-color: #343a40;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 18px;
+        margin-top: 30px;
         border-radius: 5px;
     }
     
     .filter-card {
         background-color: #f8f9fa;
         border-left: 4px solid #1e3c72;
+        margin-bottom: 20px;
     }
     
-    /* Level badge styles */
-    .level-badge {
-        font-size: 0.7rem;
-        padding: 0.2rem 0.4rem;
-        border-radius: 0.25rem;
-        font-weight: 600;
+    .student-id {
+        font-size: 11px;
+        color: #6c757d;
+        display: block;
     }
     
-    .badge-junior {
-        background-color: #2ecc71;
-        color: white;
-    }
-    
-    .badge-senior {
-        background-color: #3498db;
-        color: white;
+    /* Print styles */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .ranking-table th {
+            background-color: #1e3c72 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        .score-pass {
+            background-color: #d4edda !important;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        .score-fail {
+            background-color: #f8d7da !important;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        body {
+            font-size: 10px;
+        }
+        
+        .ranking-table {
+            page-break-inside: auto;
+        }
+        
+        .ranking-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="h3 mb-2">
-                <i class="bi bi-trophy me-2"></i>Class Ranking Report
-            </h1>
-            <p class="text-muted">
-                Academic performance ranking for {{ form_display }} - {{ term_display }}
-            </p>
-        </div>
-        <div class="col-auto">
-            <div class="d-flex gap-2">
-                <a href="{% url 'grades:admin_dashboard' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-                </a>
-                <button class="btn btn-primary" onclick="window.print()">
-                    <i class="bi bi-printer me-1"></i>Print
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Filter Card -->
-    <div class="card filter-card mb-4">
+    <div class="card filter-card mb-4 no-print">
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-4">
@@ -137,11 +237,10 @@
                     </select>
                 </div>
                 <div class="col-md-4 text-end">
-                    <div class="mt-4">
-                        <a href="{% url 'grades:download_class_ranking_pdf' %}?form={{ form }}&term={{ term }}" 
-                           class="btn btn-success">
-                            <i class="bi bi-download me-1"></i>Download as PDF
-                        </a>
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i>Print
+                        </button>
                         <a href="?form={{ form }}&term={{ term }}" class="btn btn-outline-primary">
                             <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                         </a>
@@ -151,234 +250,185 @@
         </div>
     </div>
 
-    {% if error %}
-    <div class="alert alert-warning">
-        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
-    </div>
-    {% else %}
-    
-    <!-- Summary Stats -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card summary-card h-100">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Total Students</h6>
-                    <h2 class="mb-0 text-primary">{{ total_students }}</h2>
-                    <small class="text-muted">in {{ form_display }}</small>
+    <!-- Main Ranking Table -->
+    <div class="ranking-container">
+        <!-- Header -->
+        <div class="header-title">
+            END OF {{ term_display|upper }} RESULTS FOR {{ form_display|upper }}
+        </div>
+        
+        <div class="term-info">
+            Academic Year: {{ school_settings.ACADEMIC_YEAR }}
+        </div>
+        
+        <!-- Ranking Table -->
+        <div class="table-responsive">
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th class="position-cell">POS</th>
+                        <th class="student-name-cell">NAME OF STUDENT</th>
+                        
+                        <!-- Subject Columns (first 3 letters) -->
+                        {% for subject in subjects %}
+                        <th class="subject-header">
+                            {{ subject.name|slice:":3"|upper }}
+                        </th>
+                        {% endfor %}
+                        
+                        <th>COMMENT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in students_data %}
+                    <tr>
+                        <!-- Position -->
+                        <td class="position-cell position-{{ data.position }}">
+                            {% if data.position == 1 %}
+                                <span style="font-size: 16px;">🥇</span>
+                            {% elif data.position == 2 %}
+                                <span style="font-size: 16px;">🥈</span>
+                            {% elif data.position == 3 %}
+                                <span style="font-size: 16px;">🥉</span>
+                            {% else %}
+                                {{ data.position }}
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Student Name -->
+                        <td class="student-name-cell">
+                            <strong>{{ data.student.first_name }} {{ data.student.last_name }}</strong>
+                            <span class="student-id">ID: {{ data.student.student_id }}</span>
+                        </td>
+                        
+                        <!-- Subject Scores -->
+                        {% for score in data.subject_scores %}
+                        <td class="score-cell 
+                            {% if score.score is None %}score-empty
+                            {% elif score.is_pass %}score-pass
+                            {% else %}score-fail{% endif %}">
+                            {% if score.score is not None %}
+                                {{ score.score|floatformat:1 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        
+                        <!-- Comment -->
+                        <td class="{% if data.overall_pass %}comment-pass{% else %}comment-fail{% endif %}">
+                            {{ data.comment }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ subjects|length|add:3 }}" class="text-center py-5">
+                            <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                            <h4 class="text-muted">No Data Available</h4>
+                            <p class="text-muted">No grades recorded for {{ form_display }} in {{ term_display }}</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Statistics Section -->
+        <div class="stats-header">
+            CLASS STATISTICS - {{ form_display }} {{ term_display }}
+        </div>
+        
+        <!-- Overall Class Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ class_stats.passing_students }}</h5>
+                        <p class="card-text">Students Passed</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card summary-card h-100">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Subjects</h6>
-                    <h2 class="mb-0 text-success">{{ subjects|length }}</h2>
-                    <small class="text-muted">offered this term</small>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">{{ class_stats.failing_students }}</h5>
+                        <p class="card-text">Students Failed</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card summary-card h-100">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Program</h6>
-                    <h2 class="mb-0 text-warning">
-                        {% if is_senior %}MSCE{% else %}JCE{% endif %}
-                    </h2>
-                    <small class="text-muted">
-                        {% if is_senior %}Senior Level{% else %}Junior Level{% endif %}
-                    </small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card summary-card h-100">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Academic Term</h6>
-                    <h2 class="mb-0 text-info">{{ term_display }}</h2>
-                    <small class="text-muted">Performance Report</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Legend -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body py-2">
-                    <div class="d-flex flex-wrap gap-3">
-                        <div class="d-flex align-items-center">
-                            <div class="score-pass me-2" style="width: 20px; height: 20px; border-radius: 3px;"></div>
-                            <small>Passed (≥50%)</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="score-fail me-2" style="width: 20px; height: 20px; border-radius: 3px;"></div>
-                            <small>Failed (<50%)</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="score-absent me-2" style="width: 20px; height: 20px; border-radius: 3px; border: 1px solid #ced4da;"></div>
-                            <small>AB - Absent</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="position-1 me-1">🥇</div>
-                            <small>1st Position</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="position-2 me-1">🥈</div>
-                            <small>2nd Position</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="position-3 me-1">🥉</div>
-                            <small>3rd Position</small>
-                        </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">
+                            {{ class_stats.overall_passing_percentage|floatformat:1 }}%
+                        </h5>
+                        <p class="card-text">Overall Passing Rate</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Class Ranking Table -->
-    <div class="table-container">
-        <table class="table table-bordered ranking-table mb-0">
-            <thead>
-                <tr>
-                    <th class="position-cell">Pos</th>
-                    <th class="student-name-cell">Student Name & ID</th>
-                    <th class="text-center">Level</th>
-                    <th class="text-center">Avg/Total</th>
-                    <th class="text-center">Passed</th>
-                    {% for subject in subjects %}
-                    <th class="subject-header">
-                        {{ subject.name|truncatechars:15 }}
-                    </th>
+        
+        <!-- Subject-wise Statistics -->
+        <div class="table-responsive">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>SUBJECT</th>
+                        <th>STUDENTS TAKEN</th>
+                        <th>PASSED</th>
+                        <th>FAILED</th>
+                        <th>PASSING %</th>
+                        <th>AVERAGE SCORE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in subject_stats %}
+                    <tr>
+                        <td><strong>{{ stat.name }}</strong></td>
+                        <td>{{ stat.total_taken }}</td>
+                        <td class="text-success">{{ stat.passing_count }}</td>
+                        <td class="text-danger">{{ stat.total_taken|add:"-stat.passing_count" }}</td>
+                        <td>
+                            <span class="badge {% if stat.passing_percentage >= 50 %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ stat.passing_percentage|floatformat:1 }}%
+                            </span>
+                        </td>
+                        <td>{{ stat.average_score|floatformat:1 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-3 text-muted">
+                            No subject statistics available
+                        </td>
+                    </tr>
                     {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for data in students_data %}
-                <tr>
-                    <!-- Position -->
-                    <td class="position-cell position-{{ data.position }}">
-                        {% if data.position == 1 %}🥇
-                        {% elif data.position == 2 %}🥈
-                        {% elif data.position == 3 %}🥉
-                        {% else %}{{ data.position }}
-                        {% endif %}
-                    </td>
-                    
-                    <!-- Student Info -->
-                    <td class="student-name-cell">
-                        <div class="fw-bold">{{ data.student.first_name }} {{ data.student.last_name }}</div>
-                        <small class="text-muted">ID: {{ data.student.student_id }}</small>
-                    </td>
-                    
-                    <!-- Level -->
-                    <td class="text-center">
-                        <div>{{ data.student.get_form_display }}</div>
-                        {% if data.student.is_senior %}
-                        <small class="badge badge-senior level-badge">Senior</small>
-                        {% else %}
-                        <small class="badge badge-junior level-badge">Junior</small>
-                        {% endif %}
-                    </td>
-                    
-                    <!-- Average/Total -->
-                    <td class="text-center fw-bold">
-                        {{ data.ranking_display }}
-                    </td>
-                    
-                    <!-- Passed Count -->
-                    <td class="text-center">
-                        <span class="badge {% if data.passed_count >= 6 %}bg-success{% else %}bg-warning{% endif %}">
-                            {{ data.passed_count }}/{{ data.total_subjects_taken }}
-                        </span>
-                    </td>
-                    
-                    <!-- Subject Scores -->
-                    {% for score in data.subject_scores %}
-                    <td class="score-cell 
-                        {% if score.score is None %}score-absent
-                        {% elif score.passed %}score-pass
-                        {% else %}score-fail{% endif %}">
-                        {{ score.display }}
-                        {% if score.score is not None %}
-                        <br>
-                        <small class="{% if score.passed %}text-success{% else %}text-danger{% endif %}">
-                            {{ score.grade }}
-                        </small>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{{ subjects|length|add:5 }}" class="text-center py-5">
-                        <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
-                        <h4 class="text-muted">No Data Available</h4>
-                        <p class="text-muted">No grades recorded for {{ form_display }} in {{ term_display }}</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="card-footer bg-light">
-        <div class="row">
-            <div class="col-md-6">
-                <small class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    AB = Absent | Showing {{ students_data|length }} students
-                </small>
-            </div>
-            <div class="col-md-6 text-md-end">
-                <small class="text-muted">
-                    <i class="bi bi-clock me-1"></i>
-                    Generated: {% now "F j, Y, g:i a" %}
-                </small>
-            </div>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Summary Notes -->
+        <div class="alert alert-info mt-4">
+            <h5><i class="bi bi-info-circle me-2"></i>Summary Notes</h5>
+            <ul class="mb-0">
+                <li>Total Students in {{ form_display }}: {{ class_stats.total_students }}</li>
+                <li>Overall Class Performance: {{ class_stats.overall_passing_percentage|floatformat:1 }}% passing rate</li>
+                <li>Passing Criteria: Student must pass at least 50% of subjects taken</li>
+                <li>Subjects shown with first 3 letters abbreviation</li>
+                <li>Generated on: {% now "F j, Y, g:i a" %}</li>
+            </ul>
         </div>
     </div>
     
-    <!-- Additional Notes -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h6><i class="bi bi-lightbulb me-2"></i>How to Read This Table</h6>
-                    <ul class="small">
-                        <li><strong>Position:</strong> Ranking based on {% if is_senior %}total points{% else %}average score{% endif %}</li>
-                        <li><strong>Avg/Total:</strong> {% if is_senior %}Total points (best 6 subjects){% else %}Average percentage{% endif %}</li>
-                        <li><strong>Passed:</strong> Subjects passed / Subjects taken</li>
-                        <li><strong>AB:</strong> Student was absent for that subject</li>
-                        <li>Green cells indicate passing scores (≥50%)</li>
-                        <li>Red cells indicate failing scores (<50%)</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h6><i class="bi bi-download me-2"></i>Export Options</h6>
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'grades:download_class_ranking_pdf' %}?form={{ form }}&term={{ term }}" 
-                           class="btn btn-outline-success">
-                            <i class="bi bi-file-pdf me-1"></i> Download as PDF
-                        </a>
-                        <button class="btn btn-outline-primary" onclick="window.print()">
-                            <i class="bi bi-printer me-1"></i> Print This Report
-                        </button>
-                        <a href="{% url 'grades:bulk_download_reports' %}?form={{ form }}&term={{ term }}" 
-                           class="btn btn-outline-info">
-                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Individual Reports
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Print Button -->
+    <div class="text-center mt-4 no-print">
+        <button class="btn btn-lg btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-2"></i>Print This Report
+        </button>
+        <a href="{% url 'grades:download_class_ranking_pdf' %}?form={{ form }}&term={{ term }}" 
+           class="btn btn-lg btn-success ms-2">
+            <i class="bi bi-download me-2"></i>Download PDF
+        </a>
     </div>
-    {% endif %}
 </div>
 {% endblock %}
 
@@ -389,8 +439,6 @@
         const termSelect = document.getElementById('termSelect');
         const form = formSelect.value;
         const term = termSelect.value;
-        
-        console.log('Changing to form:', form, 'term:', term);
         window.location.href = `{% url 'grades:class_ranking' %}?form=${form}&term=${term}`;
     }
     
@@ -399,32 +447,22 @@
         const termSelect = document.getElementById('termSelect');
         const form = formSelect.value;
         const term = termSelect.value;
-        
-        console.log('Changing to form:', form, 'term:', term);
         window.location.href = `{% url 'grades:class_ranking' %}?form=${form}&term=${term}`;
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Class ranking page loaded');
-        console.log('Current form:', '{{ form }}');
-        console.log('Current term:', '{{ term }}');
-        
+        // Set current selections
         const formSelect = document.getElementById('formSelect');
         const termSelect = document.getElementById('termSelect');
         
-        if (formSelect) {
-            formSelect.value = '{{ form }}';
-        }
-        if (termSelect) {
-            termSelect.value = '{{ term }}';
-        }
-        
-        if (formSelect) {
-            formSelect.addEventListener('change', updateForm);
-        }
-        if (termSelect) {
-            termSelect.addEventListener('change', updateTerm);
-        }
+        if (formSelect) formSelect.value = '{{ form }}';
+        if (termSelect) termSelect.value = '{{ term }}';
     });
+    
+    // Handle window print
+    window.onbeforeprint = function() {
+        // Add print-specific styles if needed
+        document.querySelector('.no-print').style.display = 'none';
+    };
 </script>
 {% endblock %}

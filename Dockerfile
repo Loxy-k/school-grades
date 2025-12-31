@@ -7,15 +7,19 @@ RUN apt-get update && apt-get install -y \
     libpangocairo-1.0-0 \
     libcairo2 \
     libgdk-pixbuf-2.0-0 \
-    libffi-dev \
-    libxml2-dev \
-    libxslt1-dev \
-    # PostgreSQL client libraries
-    libpq-dev \
-    # Build tools for Python packages
+    # Cairo development for pycairo (if needed)
+    libcairo2-dev \
+    # pkg-config for building Python packages
+    pkg-config \
+    # Build tools
     gcc \
     g++ \
     python3-dev \
+    # PostgreSQL client
+    libpq-dev \
+    # XML libraries
+    libxml2-dev \
+    libxslt1-dev \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,9 +29,8 @@ WORKDIR /app
 # 3. Copy requirements first (better layer caching)
 COPY requirements.txt .
 
-# 4. Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# 4. Install Python dependencies (don't upgrade pip to avoid warnings)
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. Copy application code
 COPY . .

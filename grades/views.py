@@ -1,4 +1,4 @@
-# grades/views.py - COMPLETE FIXED VERSION WITH TERM FORMAT FIX
+# grades/views.py - CLEANED UP VERSION WITH REPORTLAB ONLY
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -7,12 +7,14 @@ from django.contrib import messages
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.db.models import Avg
+from django.urls import reverse
 import os
 import io
 from zipfile import ZipFile
 
 # Import your models
 from .models import Student, Subject, Grade
+from school_grades.settings import SCHOOL_SETTINGS
 
 
 # ========== HELPER FUNCTIONS ==========
@@ -28,12 +30,11 @@ def _get_logged_student(request):
 
 def get_term_in_db_format(term_code):
     """Convert URL term codes to database format."""
-    # Your database stores terms as 'T1', 'T2', 'T3'
     term_map = {
         'T1': 'T1',
         'T2': 'T2', 
         'T3': 'T3',
-        'Term 1': 'T1',  # Map display format to DB format
+        'Term 1': 'T1',
         'Term 2': 'T2',
         'Term 3': 'T3',
         'Term1': 'T1',
@@ -44,19 +45,15 @@ def get_term_in_db_format(term_code):
         'term 3': 'T3',
     }
     
-    # Normalize the input
     term_code = str(term_code).strip()
-    
-    # If it's already in database format, return as-is
     if term_code in ['T1', 'T2', 'T3']:
         return term_code
     
-    # Map from other formats to database format
-    return term_map.get(term_code, 'T1')  # Default to T1
+    return term_map.get(term_code, 'T1')
+
 
 def get_term_display(term_code):
     """Get display name for term."""
-    # For display, show 'Term 1', 'Term 2', 'Term 3'
     term_map = {
         'T1': 'Term 1',
         'T2': 'Term 2', 
@@ -66,11 +63,9 @@ def get_term_display(term_code):
         'Term 3': 'Term 3',
     }
     
-    # Normalize the input
     term_code = str(term_code).strip()
-    
-    # Map to display format
     return term_map.get(term_code, 'Term 1')
+
 
 # ========== PUBLIC VIEWS ==========
 def index(request):
@@ -110,13 +105,10 @@ def api_grades(request):
 
 
 def student_login(request):
-    """SIMPLE student login - FIXED VERSION."""
+    """Student login."""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '').strip()
-        
-        # Debug
-        print(f"LOGIN ATTEMPT: username='{username}'")
         
         if not username or not password:
             messages.error(request, 'Please provide both username and password')
@@ -185,8 +177,7 @@ def dashboard(request):
         messages.error(request, 'Please login as a student')
         return redirect('grades:student_login')
     
-    # Use database format: 'T1' not 'Term 1'
-    current_term = 'T1'  # Changed from 'Term 1' to 'T1'
+    current_term = 'T1'
     grades = student.grades.filter(term=current_term)
     passed_count = sum(1 for grade in grades if grade.is_pass())
     
@@ -207,69 +198,15 @@ def student_grades(request):
     if not student:
         return redirect('grades:student_login')
     
-    # GET THE TERM FROM URL
     term_code = request.GET.get('term', 'T1')
-    
-    # CONVERT TO DATABASE FORMAT
     term_in_db = get_term_in_db_format(term_code)
     term_display = get_term_display(term_code)
     
-    print(f"=== DEBUG: STUDENT GRADES VIEW ===")
-    print(f"Student ID: {student.student_id}")
-    print(f"Form: {student.form}")
-    print(f"Term from URL: '{term_code}'")
-    print(f"Term in DB format: '{term_in_db}'")
-    
-    # Get ALL grades for this student to see what's actually in the database
-    all_grades = Grade.objects.filter(student=student).select_related('subject')
-    print(f"Total grades in DB: {all_grades.count()}")
-    
-    # Print ALL grades to see actual term values
-    for grade in all_grades:
-        print(f"  Grade ID {grade.id}: Subject='{grade.subject.name}', Score={grade.score}, Term='{grade.term}'")
-    
-    # Try to find grades with different term formats
-    print(f"\nTrying to find grades with term='{term_in_db}'...")
     grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
-    print(f"Found {grades.count()} grades with exact term match")
-    
-    # If no grades found, try case-insensitive search
-    if grades.count() == 0:
-        print("\nTrying case-insensitive search...")
-        # Get all grades and filter manually
-        all_student_grades = Grade.objects.filter(student=student).select_related('subject')
-        for g in all_student_grades:
-            if g.term.lower() == term_in_db.lower():
-                print(f"  Found match: '{g.term}' matches '{term_in_db}' (case-insensitive)")
-        
-        # Try different term formats
-        term_variations = [
-            'Term 1', 'Term1', 'T1', 'term 1', 'term1',
-            'Term 1 ', ' Term 1', 'TERM 1', 'TERM1'
-        ]
-        
-        print("\nTrying different term variations:")
-        for term_var in term_variations:
-            test_grades = Grade.objects.filter(student=student, term=term_var)
-            if test_grades.exists():
-                print(f"  Found {test_grades.count()} grades with term='{term_var}'")
-                for g in test_grades:
-                    print(f"    - Subject: {g.subject.name}, Term: '{g.term}'")
-    
-    # Get grades for display (use whatever works)
-    grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
-    
-    # If still no grades, try a broader search
-    if grades.count() == 0:
-        print("\nNo grades found with exact term match. Using ALL grades for display...")
-        grades = all_grades
-    
-    print(f"=== END DEBUG ===\n")
     
     # Create a dictionary for quick lookup by subject name
     grades_by_subject = {grade.subject.name: grade for grade in grades}
     
-    # Standard subjects list
     standard_subjects = [
         'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
         'Chichewa', 'English', 'Geography', 'History', 
@@ -307,10 +244,10 @@ def student_grades(request):
                 'grade_obj': grade,
             })
             
-            # Calculate position - USE term_in_db for database query
+            # Calculate position
             better_grades = Grade.objects.filter(
                 subject=grade.subject, 
-                term=grade.term,  # Use the actual term from the grade
+                term=grade.term,
                 student__form=student.form, 
                 score__gt=grade.score
             ).count()
@@ -334,6 +271,8 @@ def student_grades(request):
     }
     
     return render(request, 'grades/student_grades.html', context)
+
+
 @login_required
 def student_profile(request):
     """View student profile."""
@@ -346,12 +285,11 @@ def student_profile(request):
 
 @login_required
 def report_card(request):
-    """Generate the official report card."""
+    """Generate the official report card HTML view."""
     student = _get_logged_student(request)
     if not student:
         return redirect('grades:student_login')
     
-    # Get term from URL and convert to database format
     term_code = request.GET.get('term', 'T1')
     term_in_db = get_term_in_db_format(term_code)
     term_display = get_term_display(term_code)
@@ -365,17 +303,10 @@ def report_card(request):
     
     subjects_data = []
     for subject_name in standard_subjects:
-        # SAFE: Get subject with case-insensitive lookup
         try:
-            # Try exact match
-            subject = Subject.objects.get(name=subject_name)
-        except Subject.DoesNotExist:
-            try:
-                # Try case-insensitive
-                subject = Subject.objects.get(name__iexact=subject_name)
-            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
-                # If still not found or multiple, create new
-                subject = Subject.objects.create(name=subject_name)
+            subject = Subject.objects.get(name__iexact=subject_name)
+        except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+            subject = Subject.objects.create(name=subject_name)
         
         grade = Grade.objects.filter(student=student, subject=subject, term=term_in_db).first()
         
@@ -405,108 +336,169 @@ def report_card(request):
     }
     
     return render(request, 'grades/report_card.html', context)
-def _generate_pdf_for_student(student, term):
-    """Generate PDF report for a student."""
-    try:
-        # Convert term to database format
-        term_in_db = get_term_in_db_format(term)
-        term_display = get_term_display(term)
-        
-        # Get grades for this term
-        grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
-        
-        # Prepare context
-        context = {
-            'student': student,
-            'grades': grades,
-            'term_display': term_display,
-            'current_date': timezone.now().strftime("%B %d, %Y"),
-            'form_teacher_remarks': student.form_teacher_remarks or '',
-            'head_teacher_remarks': student.head_teacher_remarks or '',
-            'passed_count': sum(1 for grade in grades if grade.is_pass()),
-            'overall_result': 'PASS' if sum(1 for grade in grades if grade.is_pass()) >= len(grades)/2 else 'FAIL',
-        }
-        
-        # Try WeasyPrint first
-        try:
-            from weasyprint import HTML
-            from weasyprint.text.fonts import FontConfiguration
-            
-            # Use a simpler template for WeasyPrint
-            html_string = render_to_string('grades/report_pdf_weasy.html', context)
-            html = HTML(string=html_string)
-            pdf_bytes = html.write_pdf()
-            
-            return pdf_bytes
-            
-        except ImportError:
-            print("WeasyPrint not installed, trying ReportLab...")
-            # Fallback to ReportLab
-            return _generate_pdf_with_reportlab(student, term_in_db, term_display)
-            
-    except Exception as e:
-        print(f"PDF generation error: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
 
 
-def _generate_pdf_with_reportlab(student, term_in_db, term_display):
-    """Fallback PDF generation using ReportLab."""
+# ========== PDF GENERATION WITH REPORTLAB ==========
+def generate_report_pdf(student, term):
+    """Generate student report PDF using ReportLab."""
     try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib import colors
         import io
+        
+        term_display = get_term_display(term)
+        term_in_db = get_term_in_db_format(term)
         
         # Get grades
         grades = Grade.objects.filter(student=student, term=term_in_db).select_related('subject')
         
-        # Create PDF
+        # Create PDF document
         buffer = io.BytesIO()
-        p = canvas.Canvas(buffer, pagesize=letter)
-        width, height = letter
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=A4,
+            rightMargin=30,
+            leftMargin=30,
+            topMargin=30,
+            bottomMargin=30
+        )
+        
+        # Content elements
+        elements = []
+        styles = getSampleStyleSheet()
         
         # Header
-        p.setFont("Helvetica-Bold", 16)
-        p.drawString(50, height - 50, "FORTUNE SEEKERS SCHOOL")
-        p.setFont("Helvetica", 12)
-        p.drawString(50, height - 70, "Academic Report Card")
+        elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", styles['Heading1']))
+        elements.append(Paragraph("ACADEMIC REPORT CARD", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"{term_display} - Academic Year {SCHOOL_SETTINGS['ACADEMIC_YEAR']}", styles['Normal']))
+        elements.append(Spacer(1, 20))
         
-        # Student Info
-        p.setFont("Helvetica-Bold", 10)
-        p.drawString(50, height - 100, f"Student: {student.first_name} {student.last_name}")
-        p.drawString(50, height - 115, f"ID: {student.student_id}")
-        p.drawString(50, height - 130, f"Form: {student.get_form_display()}")
-        p.drawString(50, height - 145, f"Term: {term_display}")
-        p.drawString(50, height - 160, f"Date: {timezone.now().strftime('%B %d, %Y')}")
+        # Student Information Table
+        student_data = [
+            ["Student Name:", f"{student.first_name} {student.last_name}"],
+            ["Student ID:", student.student_id],
+            ["Form:", student.get_form_display()],
+            ["Term:", term_display],
+            ["Date:", timezone.now().strftime("%B %d, %Y")],
+            ["Program:", "MSCE (Senior)" if student.is_senior else "JCE (Junior)"],
+        ]
         
-        # Grades Table Header
-        p.setFont("Helvetica-Bold", 10)
-        p.drawString(50, height - 190, "Subject")
-        p.drawString(250, height - 190, "Score")
-        p.drawString(350, height - 190, "Grade")
+        student_table = Table(student_data, colWidths=[100, 300])
+        student_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#1e3c72')),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
         
-        # Grades
-        y_position = height - 210
-        p.setFont("Helvetica", 10)
+        elements.append(student_table)
+        elements.append(Spacer(1, 20))
         
-        for grade in grades:
-            p.drawString(50, y_position, grade.subject.name)
-            p.drawString(250, y_position, f"{float(grade.score):.1f}")
-            p.drawString(350, y_position, grade.get_grade_display())
-            y_position -= 15
+        # Grades Table
+        if grades.exists():
+            # Table header
+            grades_data = [
+                ["SUBJECT", "SCORE", "GRADE", "STATUS", "REMARKS"]
+            ]
             
-            if y_position < 100:  # New page if needed
-                p.showPage()
-                y_position = height - 50
-                p.setFont("Helvetica", 10)
+            # Add grades
+            passed_count = 0
+            for grade in grades:
+                is_pass = grade.is_pass()
+                if is_pass:
+                    passed_count += 1
+                
+                grades_data.append([
+                    grade.subject.name,
+                    f"{float(grade.score):.1f}",
+                    grade.get_grade_display(),
+                    "PASS" if is_pass else "FAIL",
+                    grade.grade_label().split('(')[-1].rstrip(')') if '(' in grade.grade_label() else '',
+                ])
+            
+            grades_table = Table(grades_data, colWidths=[150, 60, 60, 60, 120])
+            grades_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            
+            elements.append(grades_table)
+            elements.append(Spacer(1, 15))
+            
+            # Summary
+            summary_data = [
+                ["Total Subjects", f"{len(grades)}"],
+                ["Subjects Passed", f"{passed_count}"],
+                ["Pass Rate", f"{(passed_count/len(grades)*100):.1f}%"],
+                ["Overall Result", "PASS" if passed_count >= len(grades)/2 else "FAIL"],
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[100, 100])
+            summary_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+            ]))
+            
+            elements.append(summary_table)
+        else:
+            elements.append(Paragraph("No grades recorded for this term.", styles['Normal']))
+        
+        elements.append(Spacer(1, 20))
+        
+        # Remarks Section
+        if student.form_teacher_remarks or student.head_teacher_remarks:
+            elements.append(Paragraph("<b>REMARKS</b>", styles['Heading3']))
+            if student.form_teacher_remarks:
+                elements.append(Paragraph(f"<b>Form Teacher:</b> {student.form_teacher_remarks}", styles['Normal']))
+            if student.head_teacher_remarks:
+                elements.append(Paragraph(f"<b>Head Teacher:</b> {student.head_teacher_remarks}", styles['Normal']))
+        
+        elements.append(Spacer(1, 30))
+        
+        # Signatures
+        signature_data = [
+            ["_______________________", "_______________________", "_______________________"],
+            ["Form Teacher", "Head Teacher", "Principal"]
+        ]
+        
+        signature_table = Table(signature_data, colWidths=[150, 150, 150])
+        signature_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        
+        elements.append(signature_table)
         
         # Footer
-        p.setFont("Helvetica", 8)
-        p.drawString(50, 50, "Official Document - Fortune Seekers School")
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(
+            f"{SCHOOL_SETTINGS['ADDRESS']} | Tel: {', '.join(SCHOOL_SETTINGS['CONTACT_PHONES'])}",
+            styles['Normal']
+        ))
+        elements.append(Paragraph(
+            f"Official Document • Generated on {timezone.now().strftime('%B %d, %Y %H:%M')}",
+            styles['Italic']
+        ))
         
-        p.save()
+        # Build PDF
+        doc.build(elements)
         buffer.seek(0)
         return buffer.getvalue()
         
@@ -515,7 +507,11 @@ def _generate_pdf_with_reportlab(student, term_in_db, term_display):
         return None
     except Exception as e:
         print(f"ReportLab PDF error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
+
+
 @login_required
 def download_report_pdf(request):
     """Download student report as PDF."""
@@ -524,21 +520,19 @@ def download_report_pdf(request):
         return redirect('grades:student_login')
     
     term_code = request.GET.get('term', 'T1')
-    term_in_db = get_term_in_db_format(term_code)
     
-    pdf_bytes = _generate_pdf_for_student(student, term_in_db)
+    pdf_bytes = generate_report_pdf(student, term_code)
     
     if pdf_bytes:
         term_display = get_term_display(term_code)
-        # Clean term display for filename
         term_filename = term_display.replace(' ', '')
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         filename = f"Report_{student.student_id}_{term_filename}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     else:
-        messages.error(request, 'Failed to generate PDF. Please try again.')
-        return redirect('grades:report_card')
+        messages.warning(request, 'PDF generation failed. Please use the print button instead.')
+        return redirect(f'{reverse("grades:report_card")}?term={term_code}')
 
 
 # ========== ADMIN/TEACHER VIEWS ==========
@@ -563,49 +557,8 @@ def admin_dashboard(request):
 
 @login_required
 @user_passes_test(is_staff_user)
-def bulk_download_reports(request):
-    """Generate PDF reports for all students in a class."""
-    form = request.GET.get('form', 'F1')
-    term_code = request.GET.get('term', 'T1')
-    term_in_db = get_term_in_db_format(term_code)
-    
-    if form not in [f[0] for f in Student.FORM_CHOICES]:
-        return HttpResponse("Invalid form selected.", status=400)
-    
-    students = Student.objects.filter(form=form)
-    
-    if not students.exists():
-        return HttpResponse("No students found in this form.", status=404)
-    
-    # Create ZIP file
-    zip_buffer = io.BytesIO()
-    term_display = get_term_display(term_code)
-    term_filename = term_display.replace(' ', '')
-    
-    with ZipFile(zip_buffer, 'w') as zip_file:
-        successful = 0
-        
-        for student in students:
-            # Pass database format to PDF generator
-            pdf_content = _generate_pdf_for_student(student, term_in_db)
-            if pdf_content:
-                filename = f"Report_{student.student_id}_{term_filename}.pdf"
-                zip_file.writestr(filename, pdf_content)
-                successful += 1
-    
-    if successful == 0:
-        return HttpResponse("Failed to generate any PDFs.", status=500)
-    
-    zip_buffer.seek(0)
-    response = HttpResponse(zip_buffer, content_type='application/zip')
-    response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_filename}.zip"'
-    return response
-
-
-@login_required
-@user_passes_test(is_staff_user)
 def class_ranking_report(request):
-    """Generate a class ranking report with improved table format."""
+    """Generate a class ranking report."""
     form = request.GET.get('form', 'F1')
     term_code = request.GET.get('term', 'T1')
     term_in_db = get_term_in_db_format(term_code)
@@ -617,8 +570,7 @@ def class_ranking_report(request):
         messages.error(request, f"No students found in Form {form}")
         return redirect('grades:admin_dashboard')
     
-    # Get all subjects for this form
-    # For simplicity, we'll use standard subjects
+    # Get standard subjects
     standard_subjects = [
         'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
         'Chichewa', 'English', 'Geography', 'History', 
@@ -632,14 +584,10 @@ def class_ranking_report(request):
             subject = Subject.objects.get(name__iexact=subject_name)
             subjects.append(subject)
         except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
-            # Create if doesn't exist
-            subject = Subject.objects.create(
-                name=subject_name,
-                available_for='ALL'
-            )
+            subject = Subject.objects.create(name=subject_name, available_for='ALL')
             subjects.append(subject)
     
-    # Prepare student data with detailed subject scores
+    # Prepare student data
     students_data = []
     all_scores_by_subject = {subject.name: [] for subject in subjects}
     
@@ -648,7 +596,6 @@ def class_ranking_report(request):
         total_score = 0
         subjects_with_grades = 0
         passed_subjects = 0
-        failed_subjects = 0
         
         # Get grades for each subject
         subject_scores = []
@@ -667,8 +614,6 @@ def class_ranking_report(request):
                 
                 if is_pass:
                     passed_subjects += 1
-                else:
-                    failed_subjects += 1
                 
                 subject_scores.append({
                     'subject': subject.name,
@@ -699,7 +644,7 @@ def class_ranking_report(request):
         # Calculate average score
         avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
         
-        # Determine if student passed overall (50% of subjects or more)
+        # Determine if student passed overall
         total_subjects_taken = subjects_with_grades
         passing_percentage = (passed_subjects / total_subjects_taken * 100) if total_subjects_taken > 0 else 0
         overall_pass = passing_percentage >= 50
@@ -710,7 +655,7 @@ def class_ranking_report(request):
             'avg_score': avg_score,
             'total_score': total_score,
             'passed_subjects': passed_subjects,
-            'failed_subjects': failed_subjects,
+            'failed_subjects': subjects_with_grades - passed_subjects,
             'total_subjects_taken': total_subjects_taken,
             'passing_percentage': passing_percentage,
             'overall_pass': overall_pass,
@@ -774,74 +719,224 @@ def class_ranking_report(request):
         'is_senior': form in ['F3', 'F4'],
     }
     
+    # Check if it's a print request
+    if request.GET.get('print') == 'true':
+        return render(request, 'grades/class_ranking_print.html', context)
+    
     return render(request, 'grades/class_ranking.html', context)
+
+
 @login_required
 @user_passes_test(is_staff_user)
 def download_class_ranking_pdf(request):
-    """Download class ranking as PDF."""
+    """Download class ranking as PDF - using ReportLab."""
     try:
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+        import io
+        
         form = request.GET.get('form', 'F1')
         term_code = request.GET.get('term', 'T1')
-        term_in_db = get_term_in_db_format(term_code)
         term_display = get_term_display(term_code)
         
+        # Get data using the same logic as class_ranking_report
+        term_in_db = get_term_in_db_format(term_code)
         students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
         
         if not students.exists():
             return HttpResponse("No students found.", status=404)
         
-        # Prepare data
+        # Get subjects
+        standard_subjects = [
+            'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
+            'Chichewa', 'English', 'Geography', 'History', 
+            'Mathematics', 'Physics', 'Social & Life Skills'
+        ]
+        
+        subjects = []
+        for subject_name in standard_subjects:
+            try:
+                subject = Subject.objects.get(name__iexact=subject_name)
+                subjects.append(subject)
+            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+                subject = Subject.objects.create(name=subject_name, available_for='ALL')
+                subjects.append(subject)
+        
+        # Prepare student data
         students_data = []
         for student in students:
-            grades = Grade.objects.filter(student=student, term=term_in_db)
+            total_score = 0
+            subjects_with_grades = 0
+            passed_subjects = 0
             
-            if grades.exists():
-                total_score = sum(float(g.score) for g in grades)
-                passed_count = sum(1 for g in grades if g.is_pass())
-            else:
-                total_score = 0
-                passed_count = 0
+            # Calculate scores
+            for subject in subjects:
+                grade = Grade.objects.filter(
+                    student=student, 
+                    subject=subject, 
+                    term=term_in_db
+                ).first()
+                
+                if grade:
+                    total_score += float(grade.score)
+                    subjects_with_grades += 1
+                    if grade.is_pass():
+                        passed_subjects += 1
+            
+            avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
+            overall_pass = (passed_subjects / subjects_with_grades * 100) >= 50 if subjects_with_grades > 0 else False
             
             students_data.append({
                 'student': student,
                 'total_score': total_score,
-                'passed_count': passed_count,
-                'total_grades': grades.count(),
+                'avg_score': avg_score,
+                'passed_subjects': passed_subjects,
+                'total_subjects_taken': subjects_with_grades,
+                'overall_pass': overall_pass,
             })
         
         # Sort by total score
         students_data.sort(key=lambda x: x['total_score'], reverse=True)
         
-        # Try WeasyPrint first
-        try:
-            from weasyprint import HTML
+        # Create PDF
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=landscape(A4),
+            rightMargin=20,
+            leftMargin=20,
+            topMargin=20,
+            bottomMargin=20
+        )
+        
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Header
+        elements.append(Paragraph(f"<b>CLASS RANKING REPORT - {dict(Student.FORM_CHOICES).get(form, f'Form {form}')} {term_display}</b>", styles['Heading1']))
+        elements.append(Paragraph(f"Academic Year: {SCHOOL_SETTINGS['ACADEMIC_YEAR']}", styles['Normal']))
+        elements.append(Paragraph(f"Generated: {timezone.now().strftime('%B %d, %Y %H:%M')}", styles['Normal']))
+        elements.append(Spacer(1, 15))
+        
+        # Students Table
+        table_data = [
+            ["Position", "Student Name", "Student ID", "Average Score", "Passed Subjects", "Total Subjects", "Status"]
+        ]
+        
+        for i, data in enumerate(students_data):
+            position = i + 1
+            status = "PASS" if data['overall_pass'] else "FAIL"
+            status_color = colors.green if data['overall_pass'] else colors.red
             
-            context = {
-                'form': form,
-                'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
-                'term': term_code,
-                'term_display': term_display,
-                'students_data': students_data,
-                'total_students': len(students_data),
-                'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
-            }
-            
-            html_string = render_to_string('grades/class_ranking_pdf.html', context)
-            html = HTML(string=html_string)
-            pdf_bytes = html.write_pdf()
-            
-            # Return PDF
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-            
-        except ImportError:
-            # Fallback to simple HTML with print option
-            messages.warning(request, 'PDF generation is not available. Use the print button instead.')
-            return redirect(f'{reverse("grades:class_ranking")}?form={form}&term={term_code}')
-            
+            table_data.append([
+                str(position),
+                f"{data['student'].first_name} {data['student'].last_name}",
+                data['student'].student_id,
+                f"{data['avg_score']:.1f}",
+                str(data['passed_subjects']),
+                str(data['total_subjects_taken']),
+                status
+            ])
+        
+        table = Table(table_data, colWidths=[60, 150, 100, 80, 80, 80, 60])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('TEXTCOLOR', (6, 1), (6, -1), status_color),
+        ]))
+        
+        elements.append(table)
+        elements.append(Spacer(1, 20))
+        
+        # Statistics
+        total_students = len(students_data)
+        passing_students = sum(1 for d in students_data if d['overall_pass'])
+        passing_percentage = (passing_students / total_students * 100) if total_students > 0 else 0
+        
+        stats_data = [
+            ["Total Students", f"{total_students}"],
+            ["Students Passed", f"{passing_students}"],
+            ["Students Failed", f"{total_students - passing_students}"],
+            ["Overall Passing Rate", f"{passing_percentage:.1f}%"],
+        ]
+        
+        stats_table = Table(stats_data, colWidths=[150, 100])
+        stats_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+        ]))
+        
+        elements.append(stats_table)
+        
+        # Footer
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(
+            f"{SCHOOL_SETTINGS['NAME']} • Academic Affairs Department",
+            styles['Normal']
+        ))
+        
+        # Build PDF
+        doc.build(elements)
+        buffer.seek(0)
+        
+        # Return PDF
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f"Class_Ranking_Form{form}_{term_code}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+        # Fallback: redirect to printable HTML version
+        messages.info(request, 'Use the PRINT button on the class ranking page for best results.')
+        return redirect(f'{reverse("grades:class_ranking")}?form={request.GET.get("form")}&term={request.GET.get("term")}')
+
+
+@login_required
+@user_passes_test(is_staff_user)
+def bulk_download_reports(request):
+    """Generate PDF reports for all students in a class - using ReportLab."""
+    form = request.GET.get('form', 'F1')
+    term_code = request.GET.get('term', 'T1')
+    
+    if form not in [f[0] for f in Student.FORM_CHOICES]:
+        return HttpResponse("Invalid form selected.", status=400)
+    
+    students = Student.objects.filter(form=form)
+    
+    if not students.exists():
+        return HttpResponse("No students found in this form.", status=404)
+    
+    # Create ZIP file
+    zip_buffer = io.BytesIO()
+    term_display = get_term_display(term_code)
+    
+    with ZipFile(zip_buffer, 'w') as zip_file:
+        successful = 0
+        
+        for student in students:
+            pdf_content = generate_report_pdf(student, term_code)
+            if pdf_content:
+                filename = f"Report_{student.student_id}_{term_code}.pdf"
+                zip_file.writestr(filename, pdf_content)
+                successful += 1
+    
+    if successful == 0:
+        messages.error(request, 'Failed to generate any PDF reports.')
+        return redirect('grades:admin_dashboard')
+    
+    zip_buffer.seek(0)
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_code}.zip"'
+    return response

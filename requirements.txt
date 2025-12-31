@@ -1,6 +1,13 @@
+
+# Update requirements.txt in Railway
+cat > requirements.txt << 'EOF'
 Django==4.2.7
 gunicorn==23.0.0
 whitenoise==6.11.0
 psycopg2-binary==2.9.11
 dj-database-url==3.0.1
-weasyprint==62.2
+weasyprint==52.5
+EOF
+
+# Verify
+cat requirements.txt

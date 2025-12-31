@@ -23,23 +23,18 @@
             border-bottom: 2px solid #1e3c72;
         }
         
-        .school-name {
+        .header-title {
             font-size: 16px;
             font-weight: bold;
             color: #1e3c72;
             margin-bottom: 5px;
+            text-transform: uppercase;
         }
         
-        .report-title {
-            font-size: 14px;
+        .term-info {
+            font-size: 12px;
             font-weight: bold;
             color: #2a5298;
-            margin-bottom: 5px;
-        }
-        
-        .report-info {
-            font-size: 10px;
-            color: #666;
             margin-bottom: 10px;
         }
         
@@ -80,41 +75,57 @@
         
         .score-pass {
             background-color: #d4edda;
+            color: #155724;
         }
         
         .score-fail {
             background-color: #f8d7da;
+            color: #721c24;
         }
         
-        .score-absent {
-            background-color: #e9ecef;
+        .score-empty {
+            background-color: #f8f9fa;
             color: #6c757d;
             font-style: italic;
         }
         
-        .subject-col {
-            width: 60px;
-        }
-        
-        .position-1 { color: #ffd700; }
-        .position-2 { color: #c0c0c0; }
-        .position-3 { color: #cd7f32; }
-        
-        .level-badge {
-            font-size: 7px;
-            padding: 1px 4px;
-            border-radius: 2px;
+        .comment-pass {
+            background-color: #d4edda;
+            color: #155724;
             font-weight: bold;
         }
         
-        .badge-senior {
-            background-color: #3498db;
-            color: white;
+        .comment-fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            font-weight: bold;
         }
         
-        .badge-junior {
-            background-color: #2ecc71;
-            color: white;
+        .subject-col {
+            width: 40px;
+            writing-mode: vertical-lr;
+            transform: rotate(180deg);
+            text-align: center;
+            padding: 10px 2px;
+            white-space: nowrap;
+        }
+        
+        .stats-table th {
+            background-color: #28a745;
+        }
+        
+        .stats-table td {
+            padding: 3px;
+        }
+        
+        .summary-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #dee2e6;
         }
         
         .footer {
@@ -125,104 +136,128 @@
             color: #666;
             text-align: center;
         }
-        
-        .legend {
-            margin: 10px 0;
-            padding: 8px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 3px;
-            font-size: 8px;
-        }
-        
-        .legend-item {
-            display: inline-block;
-            margin-right: 15px;
-        }
-        
-        .summary-box {
-            margin: 10px 0;
-            padding: 8px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 3px;
-        }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="school-name">FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</div>
-        <div class="report-title">CLASS RANKING REPORT</div>
-        <div class="report-info">
-            {{ form_display }} | {{ term_display }} | Generated: {{ generated_date }}
-        </div>
+        <div class="header-title">END OF {{ term_display|upper }} RESULTS FOR {{ form_display|upper }}</div>
+        <div class="term-info">Academic Year: {{ school_settings.ACADEMIC_YEAR }}</div>
+        <div>Fortune Seekers Private Secondary School</div>
     </div>
     
-    <div class="summary-box">
-        <strong>Summary:</strong> {{ total_students }} students | {{ subjects|length }} subjects | 
-        Program: {% if is_senior %}MSCE (Senior){% else %}JCE (Junior){% endif %}
-    </div>
-    
-    <div class="legend">
-        <span class="legend-item">
-            <span style="background-color: #d4edda; padding: 2px 8px; border-radius: 2px;">Passed</span> ≥50%
-        </span>
-        <span class="legend-item">
-            <span style="background-color: #f8d7da; padding: 2px 8px; border-radius: 2px;">Failed</span> <50%
-        </span>
-        <span class="legend-item">
-            <span style="background-color: #e9ecef; padding: 2px 8px; border-radius: 2px; font-style: italic;">AB</span> Absent
-        </span>
-    </div>
-    
+    <!-- Ranking Table -->
     <table>
         <thead>
             <tr>
-               <th class="position-col">Pos</th>
-               <th class="name-col">Student Name & ID</th>
-               <th>Level</th>
-               <th>Average</th>
-               <th>Passed</th>
+               <th class="position-col">POS</th>
+               <th class="name-col">STUDENT NAME</th>
                {% for subject in subjects %}
-               <th class="subject-col">{{ subject.name|truncatechars:12 }}</th>
+               <th class="subject-col">{{ subject.name|slice:":3"|upper }}</th>
                {% endfor %}
+               <th>COMMENT</th>
             </tr>
         </thead>
         <tbody>
             {% for data in students_data %}
             <tr>
-               <td class="position-col position-{{ forloop.counter }}">
-                   {% if forloop.counter == 1 %}🥇
-                   {% elif forloop.counter == 2 %}🥈
-                   {% elif forloop.counter == 3 %}🥉
-                   {% else %}{{ forloop.counter }}
+               <td class="position-col">
+                   {% if data.position == 1 %}🥇
+                   {% elif data.position == 2 %}🥈
+                   {% elif data.position == 3 %}🥉
+                   {% else %}{{ data.position }}
                    {% endif %}
               </td>
                 <td class="name-col">
                     {{ data.student.last_name }}, {{ data.student.first_name }}<br>
                     <small>{{ data.student.student_id }}</small>
                 </td>
-                <td>
-                    {{ data.student.get_form_display }}<br>
-                    <span class="level-badge {% if data.student.is_senior %}badge-senior{% else %}badge-junior{% endif %}">
-                        {% if data.student.is_senior %}Senior{% else %}Junior{% endif %}
-                    </span>
-                </td>
-                <td>{{ data.avg_score|floatformat:1 }}%</td>
-                <td>{{ data.passed_count }}/{{ subjects|length }}</td>
                 {% for score in data.subject_scores %}
-                <td class="{% if score.score is None %}score-absent{% elif score.passed %}score-pass{% else %}score-fail{% endif %}">
-                    {{ score.display }}
+                <td class="{% if score.score is None %}score-empty{% elif score.is_pass %}score-pass{% else %}score-fail{% endif %}">
+                    {% if score.score is not None %}
+                        {{ score.score|floatformat:1 }}
+                    {% else %}
+                        -
+                    {% endif %}
                 </td>
                 {% endfor %}
+                <td class="{% if data.overall_pass %}comment-pass{% else %}comment-fail{% endif %}">
+                    {{ data.comment }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Statistics Section -->
+    <div class="summary-title">CLASS STATISTICS</div>
+    
+    <!-- Overall Stats -->
+    <table class="stats-table">
+        <thead>
+            <tr>
+                <th colspan="6">OVERALL CLASS PERFORMANCE</th>
+            </tr>
+            <tr>
+                <th>Total Students</th>
+                <th>Passed</th>
+                <th>Failed</th>
+                <th>Passing Rate</th>
+                <th>Best Subject</th>
+                <th>Worst Subject</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ class_stats.total_students }}</td>
+                <td>{{ class_stats.passing_students }}</td>
+                <td>{{ class_stats.failing_students }}</td>
+                <td>{{ class_stats.overall_passing_percentage|floatformat:1 }}%</td>
+                <td>
+                    {% if subject_stats.0 %}
+                        {{ subject_stats.0.name }} ({{ subject_stats.0.passing_percentage|floatformat:1 }}%)
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
+                    {% if subject_stats %}
+                        {{ subject_stats|last.name }} ({{ subject_stats|last.passing_percentage|floatformat:1 }}%)
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <!-- Subject Stats -->
+    <div class="summary-title" style="margin-top: 20px;">SUBJECT-WISE PERFORMANCE</div>
+    <table class="stats-table">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Students Taken</th>
+                <th>Passed</th>
+                <th>Passing %</th>
+                <th>Average Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in subject_stats %}
+            <tr>
+                <td>{{ stat.name }}</td>
+                <td>{{ stat.total_taken }}</td>
+                <td>{{ stat.passing_count }}</td>
+                <td>{{ stat.passing_percentage|floatformat:1 }}%</td>
+                <td>{{ stat.average_score|floatformat:1 }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     
     <div class="footer">
-        Fortune Seekers Private Secondary School - Academic Affairs Department<br>
-        This is an official document. Report ID: {{ form }}-{{ term }}-{{ generated_date|date:"YmdHis" }}
+        Generated: {% now "F j, Y, g:i a" %} | Fortune Seekers Private Secondary School<br>
+        Report ID: {{ form }}-{{ term }}-{% now "YmdHis" %}
     </div>
 </body>
 </html>

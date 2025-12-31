@@ -1,32 +1,41 @@
 FROM python:3.12-slim
 
-# 1. Install ALL system dependencies for WeasyPrint
+# 1. Install system dependencies
 RUN apt-get update && apt-get install -y \
+    # PDF generation dependencies
     libpango-1.0-0 \
-    libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 \
     libcairo2 \
-    libgirepository-1.0-1 \
-    gir1.2-pango-1.0 \
-    libgobject-2.0-0 \
-    shared-mime-info \
+    libgdk-pixbuf-2.0-0 \
     libffi-dev \
-    libcairo2-dev \
     libxml2-dev \
+    libxslt1-dev \
+    # PostgreSQL client libraries
+    libpq-dev \
+    # Build tools for Python packages
+    gcc \
+    g++ \
+    python3-dev \
+    # Clean up
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Set working directory
 WORKDIR /app
 
-# 3. Copy and install Python dependencies
+# 3. Copy requirements first (better layer caching)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Copy your Django project
+# 4. Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 5. Copy application code
 COPY . .
 
-# 5. Run migrations, collect static files, and start Gunicorn
+# 6. Create staticfiles directory if it doesn't exist
+RUN mkdir -p staticfiles
+
+# 7. Run the application
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
     gunicorn school_grades.wsgi:application \

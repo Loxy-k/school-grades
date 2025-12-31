@@ -173,11 +173,7 @@
                 </td>
                 {% for score in data.subject_scores %}
                 <td class="{% if score.score is None %}score-empty{% elif score.is_pass %}score-pass{% else %}score-fail{% endif %}">
-                    {% if score.score is not None %}
-                        {{ score.score|floatformat:1 }}
-                    {% else %}
-                        -
-                    {% endif %}
+                    {{ score.display }}
                 </td>
                 {% endfor %}
                 <td class="{% if data.overall_pass %}comment-pass{% else %}comment-fail{% endif %}">
@@ -213,15 +209,15 @@
                 <td>{{ class_stats.failing_students }}</td>
                 <td>{{ class_stats.overall_passing_percentage|floatformat:1 }}%</td>
                 <td>
-                    {% if subject_stats.0 %}
-                        {{ subject_stats.0.name }} ({{ subject_stats.0.passing_percentage|floatformat:1 }}%)
+                    {% if best_subject %}
+                        {{ best_subject.name }} ({{ best_subject.passing_percentage|floatformat:1 }}%)
                     {% else %}
                         N/A
                     {% endif %}
                 </td>
                 <td>
-                    {% if subject_stats %}
-                        {{ subject_stats|last.name }} ({{ subject_stats|last.passing_percentage|floatformat:1 }}%)
+                    {% if worst_subject %}
+                        {{ worst_subject.name }} ({{ worst_subject.passing_percentage|floatformat:1 }}%)
                     {% else %}
                         N/A
                     {% endif %}
@@ -256,8 +252,8 @@
     </table>
     
     <div class="footer">
-        Generated: {% now "F j, Y, g:i a" %} | Fortune Seekers Private Secondary School<br>
-        Report ID: {{ form }}-{{ term }}-{% now "YmdHis" %}
+        Generated: {{ generated_date }} | Fortune Seekers Private Secondary School<br>
+        Report ID: {{ form }}-{{ term }}-{{ generated_date|date:"YmdHis" }}
     </div>
 </body>
 </html>

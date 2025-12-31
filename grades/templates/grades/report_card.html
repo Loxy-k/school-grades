@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <style>
+    /* Keep all your existing CSS - it's good */
     .report-card-container {
         background: white;
         padding: 20px;
@@ -149,11 +150,12 @@
 <div class="report-card-container">
     <!-- School Header -->
     <div class="school-header">
-        <div class="school-name">{{ school_settings.NAME }}</div>
-        <div class="school-motto">"{{ school_settings.MOTTO }}"</div>
-        <div class="school-address">{{ school_settings.ADDRESS }}</div>
+        <div class="school-name">{{ school.name }}</div>  <!-- Changed from school_settings.NAME to school.name -->
+        <div class="school-motto">"{{ school.motto }}"</div>  <!-- Changed from school_settings.MOTTO to school.motto -->
+        <div class="school-address">{{ school.address }}</div>  <!-- Changed from school_settings.ADDRESS to school.address -->
         <div class="report-title">ACADEMIC REPORT CARD</div>
-        <div>{{ term_display }} - Academic Year {{ school_settings.ACADEMIC_YEAR }}</div>
+        <!-- For academic year, you can use current_year from context processor -->
+        <div>{{ term_display }} - Academic Year {{ current_year }}</div>  <!-- Changed from school_settings.ACADEMIC_YEAR to current_year -->
     </div>
     
     <!-- Student Information -->
@@ -258,7 +260,7 @@
     
     <!-- Footer -->
     <div class="text-center mt-4 text-muted small">
-        <p>{{ school_settings.NAME }} • Official Document • Generated on {% now "F j, Y" %}</p>
+        <p>{{ school.name }} • Official Document • Generated on {% now "F j, Y" %}</p>  <!-- Changed from school_settings.NAME to school.name -->
     </div>
     
     <!-- Action Buttons -->

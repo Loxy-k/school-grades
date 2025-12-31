@@ -750,7 +750,6 @@ def class_ranking_report(request):
     }
     
     return render(request, 'grades/class_ranking.html', context)
-
 @login_required
 @user_passes_test(is_staff_user)
 def download_class_ranking_pdf(request):
@@ -768,33 +767,132 @@ def download_class_ranking_pdf(request):
         if not students.exists():
             return HttpResponse("No students found.", status=404)
         
-        # Prepare data - USE term_in_db for queries
-        student_data = []
+        # Get all subjects
+        standard_subjects = [
+            'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
+            'Chichewa', 'English', 'Geography', 'History', 
+            'Mathematics', 'Physics', 'Social & Life Skills'
+        ]
+        
+        subjects = []
+        for subject_name in standard_subjects:
+            try:
+                subject = Subject.objects.get(name__iexact=subject_name)
+                subjects.append(subject)
+            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+                subject = Subject.objects.create(name=subject_name, available_for='ALL')
+                subjects.append(subject)
+        
+        # Prepare student data
+        students_data = []
+        all_scores_by_subject = {subject.name: [] for subject in subjects}
+        
         for student in students:
-            grades = Grade.objects.filter(student=student, term=term_in_db)
+            subject_scores = []
+            total_score = 0
+            subjects_with_grades = 0
+            passed_subjects = 0
             
-            if grades.exists():
-                avg_score = grades.aggregate(avg=Avg('score'))['avg']
-                avg_score = float(avg_score) if avg_score else 0
-            else:
-                avg_score = 0
+            for subject in subjects:
+                grade = Grade.objects.filter(
+                    student=student, 
+                    subject=subject, 
+                    term=term_in_db
+                ).first()
+                
+                if grade:
+                    score = float(grade.score)
+                    total_score += score
+                    subjects_with_grades += 1
+                    is_pass = grade.is_pass()
+                    
+                    if is_pass:
+                        passed_subjects += 1
+                    
+                    subject_scores.append({
+                        'score': score,
+                        'is_pass': is_pass,
+                        'display': f"{score:.1f}",
+                    })
+                    
+                    all_scores_by_subject[subject.name].append({
+                        'score': score,
+                        'is_pass': is_pass,
+                    })
+                else:
+                    subject_scores.append({
+                        'score': None,
+                        'is_pass': None,
+                        'display': '-',
+                    })
             
-            student_data.append({
+            avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
+            overall_pass = (passed_subjects / subjects_with_grades * 100) >= 50 if subjects_with_grades > 0 else False
+            
+            students_data.append({
                 'student': student,
+                'subject_scores': subject_scores,
                 'avg_score': avg_score,
-                'total_grades': grades.count(),
+                'total_score': total_score,
+                'passed_subjects': passed_subjects,
+                'total_subjects_taken': subjects_with_grades,
+                'overall_pass': overall_pass,
+                'comment': 'PASS' if overall_pass else 'FAIL',
             })
         
-        # Sort by average score
-        student_data.sort(key=lambda x: x['avg_score'], reverse=True)
+        # Sort by total score
+        students_data.sort(key=lambda x: x['total_score'], reverse=True)
+        
+        # Assign positions
+        for i, data in enumerate(students_data):
+            data['position'] = i + 1
+        
+        # Calculate statistics
+        class_stats = {
+            'total_students': len(students_data),
+            'passing_students': sum(1 for data in students_data if data['overall_pass']),
+            'failing_students': sum(1 for data in students_data if not data['overall_pass']),
+            'overall_passing_percentage': (sum(1 for data in students_data if data['overall_pass']) / len(students_data) * 100) if students_data else 0,
+        }
+        
+        # Subject stats
+        subject_stats = []
+        for subject in subjects:
+            scores = all_scores_by_subject[subject.name]
+            valid_scores = [s for s in scores if s['score'] is not None]
+            
+            if valid_scores:
+                passing_count = sum(1 for s in valid_scores if s['is_pass'])
+                total_count = len(valid_scores)
+                passing_percentage = (passing_count / total_count * 100) if total_count > 0 else 0
+                
+                subject_stats.append({
+                    'name': subject.name,
+                    'total_taken': total_count,
+                    'passing_count': passing_count,
+                    'passing_percentage': passing_percentage,
+                    'average_score': sum(s['score'] for s in valid_scores) / total_count if total_count > 0 else 0,
+                })
+        
+        # Sort subject stats
+        subject_stats.sort(key=lambda x: x['passing_percentage'], reverse=True)
+        
+        # Fix for template error - use list indexing instead of |last filter
+        best_subject = subject_stats[0] if subject_stats else None
+        worst_subject = subject_stats[-1] if subject_stats else None
         
         context = {
             'form': form,
             'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
             'term': term_code,
             'term_display': term_display,
-            'students_data': student_data,
-            'total_students': len(student_data),
+            'students_data': students_data,
+            'subjects': subjects,
+            'subject_stats': subject_stats,
+            'class_stats': class_stats,
+            'best_subject': best_subject,
+            'worst_subject': worst_subject,
+            'school_settings': SCHOOL_SETTINGS,
             'generated_date': timezone.now().strftime("%B %d, %Y %H:%M"),
         }
         
@@ -809,11 +907,13 @@ def download_class_ranking_pdf(request):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
         
+    except ImportError:
+        # Fallback: Show HTML page for printing if WeasyPrint not installed
+        messages.error(request, 'PDF generation requires WeasyPrint. Showing HTML version for printing.')
+        return redirect(f"{request.path.replace('-pdf', '')}?form={request.GET.get('form')}&term={request.GET.get('term')}")
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
-
-
-
-
 
 

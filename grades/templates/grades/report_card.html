@@ -4,7 +4,6 @@
 
 {% block extra_css %}
 <style>
-    /* Keep all your existing CSS - it's good */
     .report-card-container {
         background: white;
         padding: 20px;
@@ -19,6 +18,16 @@
         margin-bottom: 20px;
         padding-bottom: 15px;
         border-bottom: 2px solid #1e3c72;
+    }
+    
+    .logo-container {
+        margin-bottom: 15px;
+    }
+    
+    .school-logo {
+        max-height: 80px;
+        max-width: 80px;
+        border-radius: 5px;
     }
     
     .school-name {
@@ -142,20 +151,29 @@
             box-shadow: none;
             padding: 0;
         }
+        
+        .school-logo {
+            max-height: 70px;
+            max-width: 70px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="report-card-container">
-    <!-- School Header -->
+    <!-- School Header with Logo -->
     <div class="school-header">
-        <div class="school-name">{{ school.name }}</div>  <!-- Changed from school_settings.NAME to school.name -->
-        <div class="school-motto">"{{ school.motto }}"</div>  <!-- Changed from school_settings.MOTTO to school.motto -->
-        <div class="school-address">{{ school.address }}</div>  <!-- Changed from school_settings.ADDRESS to school.address -->
+        <div class="logo-container">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="School Logo" class="school-logo">
+            {% endif %}
+        </div>
+        <div class="school-name">{{ school.name }}</div>
+        <div class="school-motto">"{{ school.motto }}"</div>
+        <div class="school-address">{{ school.address }}</div>
         <div class="report-title">ACADEMIC REPORT CARD</div>
-        <!-- For academic year, you can use current_year from context processor -->
-        <div>{{ term_display }} - Academic Year {{ current_year }}</div>  <!-- Changed from school_settings.ACADEMIC_YEAR to current_year -->
+        <div>{{ term_display }} - Academic Year {{ current_year }}</div>
     </div>
     
     <!-- Student Information -->
@@ -260,7 +278,7 @@
     
     <!-- Footer -->
     <div class="text-center mt-4 text-muted small">
-        <p>{{ school.name }} • Official Document • Generated on {% now "F j, Y" %}</p>  <!-- Changed from school_settings.NAME to school.name -->
+        <p>{{ school.name }} • Official Document • Generated on {% now "F j, Y" %}</p>
     </div>
     
     <!-- Action Buttons -->

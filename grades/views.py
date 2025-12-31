@@ -340,13 +340,16 @@ def report_card(request):
 
 # ========== PDF GENERATION WITH REPORTLAB ==========
 def generate_report_pdf(student, term):
-    """Generate student report PDF using ReportLab."""
+    """Generate student report PDF using ReportLab with logo."""
     try:
         from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
+        from reportlab.lib.units import inch
         import io
+        import os
+        from django.conf import settings
         
         term_display = get_term_display(term)
         term_in_db = get_term_in_db_format(term)
@@ -369,12 +372,77 @@ def generate_report_pdf(student, term):
         elements = []
         styles = getSampleStyleSheet()
         
-        # Header
-        elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", styles['Heading1']))
-        elements.append(Paragraph("ACADEMIC REPORT CARD", styles['Heading2']))
-        elements.append(Spacer(1, 10))
+        # Create custom styles
+        header_style = ParagraphStyle(
+            'HeaderStyle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#1e3c72'),
+            alignment=1,  # Center
+            spaceAfter=6,
+        )
+        
+        subheader_style = ParagraphStyle(
+            'SubHeaderStyle',
+            parent=styles['Heading2'],
+            fontSize=14,
+            textColor=colors.HexColor('#2a5298'),
+            alignment=1,
+            spaceAfter=3,
+        )
+        
+        # Check if logo exists
+        logo_path = os.path.join(settings.BASE_DIR, 'grades', 'static', 'grades', 'images', 'Fortune Seekers LOGO.png')
+        logo_exists = os.path.exists(logo_path)
+        # In the generate_report_pdf function, after checking logo_path:
+        if os.path.exists(logo_path):
+            try:
+                logo = Image(logo_path, width=70, height=70)
+           # Use it in header...
+            except:
+                # Logo exists but can't be loaded (wrong format, corrupted, etc.)
+                print(f"Warning: Could not load logo from {logo_path}")
+        # Continue without logo
+        else:
+            print(f"Logo not found at: {logo_path}")
+            elements.append(Paragraph("[School Logo]", styles['Italic']))
+        
+        if logo_exists:
+            try:
+                # Header with logo on left, text on right
+                header_data = [
+                    [Image(logo_path, width=70, height=70), 
+                     Paragraph("<b>FORTUNE SEEKERS<br/>PRIVATE SECONDARY SCHOOL</b>", header_style)]
+                ]
+                
+                header_table = Table(header_data, colWidths=[100, 400])
+                header_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                    ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ]))
+                
+                elements.append(header_table)
+            except:
+                # Fallback: Text-only header
+                elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", header_style))
+        else:
+            # Text-only header
+            elements.append(Paragraph("<b>FORTUNE SEEKERS PRIVATE SECONDARY SCHOOL</b>", header_style))
+        
+        # School motto and report title
+        elements.append(Paragraph('<i>"Where Knowledge Grows Like a Mustard Seed!"</i>', subheader_style))
+        elements.append(Paragraph("ACADEMIC REPORT CARD", ParagraphStyle(
+            'ReportTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            textColor=colors.HexColor('#dc3545'),
+            alignment=1,
+            spaceAfter=6,
+        )))
         elements.append(Paragraph(f"{term_display} - Academic Year {SCHOOL_SETTINGS['ACADEMIC_YEAR']}", styles['Normal']))
-        elements.append(Spacer(1, 20))
+        elements.append(Spacer(1, 15))
         
         # Student Information Table
         student_data = [
@@ -395,6 +463,9 @@ def generate_report_pdf(student, term):
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#1e3c72')),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
         ]))
         
         elements.append(student_table)
@@ -510,8 +581,6 @@ def generate_report_pdf(student, term):
         import traceback
         traceback.print_exc()
         return None
-
-
 @login_required
 def download_report_pdf(request):
     """Download student report as PDF."""
@@ -940,3 +1009,4 @@ def bulk_download_reports(request):
     response = HttpResponse(zip_buffer, content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="Reports_Form{form}_{term_code}.zip"'
     return response
+

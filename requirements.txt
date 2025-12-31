@@ -7,5 +7,3 @@ weasyprint==62.1
 cffi==1.16.0
 Pillow==10.3.0
 reportlab==4.0.9
-xhtml2pdf==0.2.13
-django-htmx==1.19.0

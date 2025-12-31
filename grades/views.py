@@ -409,6 +409,7 @@ def _generate_pdf_for_student(student, term):
     """Helper to generate PDF for a student."""
     try:
         from weasyprint import HTML
+        from weasyprint.text.fonts import FontConfiguration
         
         # Convert term to database format if needed
         if term in ['T1', 'T2', 'T3']:
@@ -426,17 +427,11 @@ def _generate_pdf_for_student(student, term):
         
         subjects_data = []
         for subject_name in standard_subjects:
-            # SAFE: Get subject with case-insensitive lookup
+            # Get subject with case-insensitive lookup
             try:
-                # Try exact match
-                subject = Subject.objects.get(name=subject_name)
-            except Subject.DoesNotExist:
-                try:
-                    # Try case-insensitive
-                    subject = Subject.objects.get(name__iexact=subject_name)
-                except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
-                    # If still not found or multiple, skip
-                    subject = None
+                subject = Subject.objects.get(name__iexact=subject_name)
+            except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+                subject = None
             
             if subject:
                 grade = Grade.objects.filter(
@@ -464,6 +459,7 @@ def _generate_pdf_for_student(student, term):
         
         context = {
             'student': student,
+            'school': {'name': 'Fortune Seekers School'},  # Add school info
             'subjects': subjects_data,
             'term_display': term_display,
             'current_date': timezone.now().strftime("%B %d, %Y"),
@@ -474,9 +470,16 @@ def _generate_pdf_for_student(student, term):
         # Render HTML
         html_string = render_to_string('grades/report_pdf.html', context)
         
-        # Generate PDF
+        # Generate PDF with font configuration
+        font_config = FontConfiguration()
         html = HTML(string=html_string)
-        pdf_bytes = html.write_pdf()
+        
+        # Try with different options
+        try:
+            pdf_bytes = html.write_pdf(font_config=font_config)
+        except AttributeError:
+            # Fallback: Try without font_config
+            pdf_bytes = html.write_pdf()
         
         return pdf_bytes
         
@@ -688,6 +691,7 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 
 

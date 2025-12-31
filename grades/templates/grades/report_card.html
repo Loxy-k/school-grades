@@ -1,0 +1,279 @@
+{% extends 'grades/base.html' %}
+
+{% block title %}Official Report Card - {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .school-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #1e3c72;
+    }
+    
+    .school-name {
+        font-size: 22px;
+        font-weight: bold;
+        color: #1e3c72;
+        margin-bottom: 5px;
+    }
+    
+    .school-motto {
+        font-size: 14px;
+        color: #2a5298;
+        font-style: italic;
+        margin-bottom: 5px;
+    }
+    
+    .report-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #dc3545;
+        margin: 10px 0;
+        text-transform: uppercase;
+    }
+    
+    .student-info {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border-left: 4px solid #1e3c72;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .info-item {
+        margin: 0;
+    }
+    
+    .info-label {
+        font-weight: bold;
+        color: #1e3c72;
+    }
+    
+    .grades-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .grades-table th {
+        background-color: #1e3c72;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-weight: bold;
+    }
+    
+    .grades-table td {
+        padding: 8px 10px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .grades-table tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    
+    .grade-badge {
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-weight: bold;
+        display: inline-block;
+        min-width: 30px;
+        text-align: center;
+    }
+    
+    .grade-A { background-color: #28a745; color: white; }
+    .grade-B { background-color: #17a2b8; color: white; }
+    .grade-C { background-color: #ffc107; color: #212529; }
+    .grade-D { background-color: #fd7e14; color: white; }
+    .grade-F { background-color: #dc3545; color: white; }
+    
+    .grade-1 { background-color: #28a745; color: white; }
+    .grade-2 { background-color: #28a745; color: white; }
+    .grade-3 { background-color: #20c997; color: white; }
+    .grade-4 { background-color: #17a2b8; color: white; }
+    .grade-5 { background-color: #17a2b8; color: white; }
+    .grade-6 { background-color: #17a2b8; color: white; }
+    .grade-7 { background-color: #6f42c1; color: white; }
+    .grade-8 { background-color: #6f42c1; color: white; }
+    .grade-9 { background-color: #dc3545; color: white; }
+    
+    .signature-area {
+        margin-top: 40px;
+        display: flex;
+        justify-content: space-between;
+        text-align: center;
+    }
+    
+    .signature-box {
+        flex: 1;
+        margin: 0 10px;
+    }
+    
+    .signature-line {
+        border-top: 1px solid #333;
+        width: 80%;
+        margin: 10px auto 0;
+        padding-top: 5px;
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .report-card-container {
+            box-shadow: none;
+            padding: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-card-container">
+    <!-- School Header -->
+    <div class="school-header">
+        <div class="school-name">{{ school_settings.NAME }}</div>
+        <div class="school-motto">"{{ school_settings.MOTTO }}"</div>
+        <div class="school-address">{{ school_settings.ADDRESS }}</div>
+        <div class="report-title">ACADEMIC REPORT CARD</div>
+        <div>{{ term_display }} - Academic Year {{ school_settings.ACADEMIC_YEAR }}</div>
+    </div>
+    
+    <!-- Student Information -->
+    <div class="student-info">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Student Name:</span><br>
+                {{ student.first_name }} {{ student.last_name }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Student ID:</span><br>
+                {{ student.student_id }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Form:</span><br>
+                {{ student.get_form_display }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Term:</span><br>
+                {{ term_display }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Program:</span><br>
+                {% if student.is_senior %}MSCE (Senior){% else %}JCE (Junior){% endif %}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date:</span><br>
+                {% now "F j, Y" %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Grades Table -->
+    <h3>Academic Performance</h3>
+    <table class="grades-table">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Score</th>
+                <th>Grade</th>
+                <th>Remarks</th>
+                <th>Teacher</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            {% if subject.has_grade %}
+            <tr>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.score|floatformat:1 }}</td>
+                <td>
+                    <span class="grade-badge 
+                        {% if student.is_senior %}grade-{{ subject.grade_display }}
+                        {% else %}grade-{{ subject.grade_display }}{% endif %}">
+                        {{ subject.grade_display }}
+                    </span>
+                </td>
+                <td>{{ subject.remarks }}</td>
+                <td>{{ subject.teacher_name }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td>{{ subject.name }}</td>
+                <td colspan="4" class="text-muted text-center">No grade recorded</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Teacher Remarks -->
+    {% if form_teacher_remarks or head_teacher_remarks or other_requirements %}
+    <div class="student-info mt-4">
+        <h4>Remarks & Requirements</h4>
+        {% if form_teacher_remarks %}
+        <p><strong>Form Teacher Remarks:</strong> {{ form_teacher_remarks }}</p>
+        {% endif %}
+        {% if head_teacher_remarks %}
+        <p><strong>Head Teacher Remarks:</strong> {{ head_teacher_remarks }}</p>
+        {% endif %}
+        {% if other_requirements %}
+        <p><strong>Other Requirements:</strong> {{ other_requirements }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Signature Area -->
+    <div class="signature-area">
+        <div class="signature-box">
+            <div>_______________________</div>
+            <div class="signature-line">Form Teacher</div>
+        </div>
+        <div class="signature-box">
+            <div>_______________________</div>
+            <div class="signature-line">Head Teacher</div>
+        </div>
+        <div class="signature-box">
+            <div>_______________________</div>
+            <div class="signature-line">Principal</div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="text-center mt-4 text-muted small">
+        <p>{{ school_settings.NAME }} • Official Document • Generated on {% now "F j, Y" %}</p>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="text-center mt-4 no-print">
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-2"></i>Print Report Card
+        </button>
+        <a href="{% url 'grades:download_report_pdf' %}?term={{ term_display }}" 
+           class="btn btn-success ms-2">
+            <i class="bi bi-download me-2"></i>Download PDF
+        </a>
+        <a href="{% url 'grades:student_grades' %}?term={{ term_display }}" 
+           class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-left me-2"></i>Back to Grades
+        </a>
+    </div>
+</div>
+{% endblock %}

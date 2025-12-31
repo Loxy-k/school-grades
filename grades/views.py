@@ -580,7 +580,7 @@ def bulk_download_reports(request):
 @login_required
 @user_passes_test(is_staff_user)
 def class_ranking_report(request):
-    """Generate a class ranking report."""
+    """Generate a class ranking report with improved table format."""
     form = request.GET.get('form', 'F1')
     term_code = request.GET.get('term', 'T1')
     term_in_db = get_term_in_db_format(term_code)
@@ -592,44 +592,164 @@ def class_ranking_report(request):
         messages.error(request, f"No students found in Form {form}")
         return redirect('grades:admin_dashboard')
     
-    # Prepare data - USE term_in_db for queries
-    student_data = []
+    # Get all subjects for this form
+    # For simplicity, we'll use standard subjects
+    standard_subjects = [
+        'Agriculture', 'Bible Knowledge', 'Biology', 'Chemistry', 
+        'Chichewa', 'English', 'Geography', 'History', 
+        'Mathematics', 'Physics', 'Social & Life Skills'
+    ]
+    
+    # Get subject objects
+    subjects = []
+    for subject_name in standard_subjects:
+        try:
+            subject = Subject.objects.get(name__iexact=subject_name)
+            subjects.append(subject)
+        except (Subject.DoesNotExist, Subject.MultipleObjectsReturned):
+            # Create if doesn't exist
+            subject = Subject.objects.create(
+                name=subject_name,
+                available_for='ALL'
+            )
+            subjects.append(subject)
+    
+    # Prepare student data with detailed subject scores
+    students_data = []
+    all_scores_by_subject = {subject.name: [] for subject in subjects}
+    
     for student in students:
-        grades = Grade.objects.filter(student=student, term=term_in_db)
+        student_grades = {}
+        total_score = 0
+        subjects_with_grades = 0
+        passed_subjects = 0
+        failed_subjects = 0
         
-        if grades.exists():
-            avg_score = grades.aggregate(avg=Avg('score'))['avg']
-            avg_score = float(avg_score) if avg_score else 0
-            passed_count = sum(1 for grade in grades if grade.is_pass())
-        else:
-            avg_score = 0
-            passed_count = 0
+        # Get grades for each subject
+        subject_scores = []
+        for subject in subjects:
+            grade = Grade.objects.filter(
+                student=student, 
+                subject=subject, 
+                term=term_in_db
+            ).first()
+            
+            if grade:
+                score = float(grade.score)
+                total_score += score
+                subjects_with_grades += 1
+                is_pass = grade.is_pass()
+                
+                if is_pass:
+                    passed_subjects += 1
+                else:
+                    failed_subjects += 1
+                
+                subject_scores.append({
+                    'subject': subject.name,
+                    'subject_short': subject.name[:3].upper() if len(subject.name) >= 3 else subject.name.upper(),
+                    'score': score,
+                    'is_pass': is_pass,
+                    'grade_display': grade.get_grade_display(),
+                    'grade_obj': grade,
+                })
+                
+                # Add to all scores for statistics
+                all_scores_by_subject[subject.name].append({
+                    'score': score,
+                    'is_pass': is_pass,
+                    'student_id': student.student_id
+                })
+            else:
+                # No grade for this subject
+                subject_scores.append({
+                    'subject': subject.name,
+                    'subject_short': subject.name[:3].upper() if len(subject.name) >= 3 else subject.name.upper(),
+                    'score': None,
+                    'is_pass': None,
+                    'grade_display': '',
+                    'grade_obj': None,
+                })
         
-        student_data.append({
+        # Calculate average score
+        avg_score = total_score / subjects_with_grades if subjects_with_grades > 0 else 0
+        
+        # Determine if student passed overall (50% of subjects or more)
+        total_subjects_taken = subjects_with_grades
+        passing_percentage = (passed_subjects / total_subjects_taken * 100) if total_subjects_taken > 0 else 0
+        overall_pass = passing_percentage >= 50
+        
+        students_data.append({
             'student': student,
+            'subject_scores': subject_scores,
             'avg_score': avg_score,
-            'passed_count': passed_count,
-            'total_grades': grades.count(),
+            'total_score': total_score,
+            'passed_subjects': passed_subjects,
+            'failed_subjects': failed_subjects,
+            'total_subjects_taken': total_subjects_taken,
+            'passing_percentage': passing_percentage,
+            'overall_pass': overall_pass,
+            'comment': 'PASS' if overall_pass else 'FAIL',
         })
     
-    # Sort by average score
-    student_data.sort(key=lambda x: x['avg_score'], reverse=True)
+    # Sort students by total score (highest to lowest)
+    students_data.sort(key=lambda x: x['total_score'], reverse=True)
     
-    # Assign positions
-    for i, data in enumerate(student_data):
-        data['position'] = i + 1
+    # Assign positions (handle ties)
+    position = 1
+    for i, data in enumerate(students_data):
+        if i > 0 and students_data[i]['total_score'] < students_data[i-1]['total_score']:
+            position = i + 1
+        data['position'] = position
+    
+    # Calculate class statistics
+    class_stats = {
+        'total_students': len(students_data),
+        'passing_students': sum(1 for data in students_data if data['overall_pass']),
+        'failing_students': sum(1 for data in students_data if not data['overall_pass']),
+        'overall_passing_percentage': (sum(1 for data in students_data if data['overall_pass']) / len(students_data) * 100) if students_data else 0,
+    }
+    
+    # Calculate subject-wise passing percentages
+    subject_stats = []
+    for subject in subjects:
+        subject_name = subject.name
+        scores = all_scores_by_subject[subject_name]
+        
+        if scores:
+            valid_scores = [s for s in scores if s['score'] is not None]
+            if valid_scores:
+                passing_count = sum(1 for s in valid_scores if s['is_pass'])
+                total_count = len(valid_scores)
+                passing_percentage = (passing_count / total_count * 100) if total_count > 0 else 0
+                
+                subject_stats.append({
+                    'name': subject.name,
+                    'short_name': subject.name[:3].upper() if len(subject.name) >= 3 else subject.name.upper(),
+                    'total_taken': total_count,
+                    'passing_count': passing_count,
+                    'passing_percentage': passing_percentage,
+                    'average_score': sum(s['score'] for s in valid_scores) / total_count if total_count > 0 else 0,
+                })
+    
+    # Sort subject stats by passing percentage (highest to lowest)
+    subject_stats.sort(key=lambda x: x['passing_percentage'], reverse=True)
     
     context = {
         'form': form,
         'form_display': dict(Student.FORM_CHOICES).get(form, f"Form {form}"),
         'term': term_code,
         'term_display': term_display,
-        'students_data': student_data,
-        'total_students': len(student_data),
+        'students_data': students_data,
+        'subjects': subjects,
+        'subject_stats': subject_stats,
+        'class_stats': class_stats,
+        'form_choices': Student.FORM_CHOICES,
+        'term_choices': Grade.TERM_CHOICES,
+        'is_senior': form in ['F3', 'F4'],
     }
     
     return render(request, 'grades/class_ranking.html', context)
-
 
 @login_required
 @user_passes_test(is_staff_user)
@@ -691,6 +811,7 @@ def download_class_ranking_pdf(request):
         
     except Exception as e:
         return HttpResponse(f'PDF Generation Error: {str(e)}', status=500)
+
 
 
 

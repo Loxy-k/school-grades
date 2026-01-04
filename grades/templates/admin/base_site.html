@@ -33,5 +33,175 @@
     .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover {
         background: #2a5298;
     }
+    
+    /* Custom styles for our enhanced admin */
+    .filter-header {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border-left: 4px solid #1e3c72;
+    }
+    
+    .student-select-wrapper {
+        position: relative;
+    }
+    
+    .student-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .student-suggestion {
+        padding: 8px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .student-suggestion:hover {
+        background-color: #f0f0f0;
+    }
+    
+    .student-suggestion.active {
+        background-color: #1e3c72;
+        color: white;
+    }
 </style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add student filtering to all student dropdowns
+    const studentSelects = document.querySelectorAll('select[name="student"], select[id*="student"]');
+    
+    studentSelects.forEach(select => {
+        // Wrap the select with our enhanced wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'student-select-wrapper';
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+        
+        // Add search input above the select
+        const searchDiv = document.createElement('div');
+        searchDiv.style.marginBottom = '10px';
+        searchDiv.innerHTML = `
+            <input type="text" 
+                   class="student-search" 
+                   placeholder="Search student by name or ID..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        `;
+        wrapper.insertBefore(searchDiv, select);
+        
+        const searchInput = searchDiv.querySelector('.student-search');
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.className = 'student-suggestions';
+        wrapper.appendChild(suggestionsDiv);
+        
+        // Store all options for filtering
+        const allOptions = Array.from(select.options);
+        
+        // Filter function
+        function filterOptions(searchTerm) {
+            const filtered = allOptions.filter(option => {
+                if (option.value === '') return true; // Keep the empty option
+                const text = option.text.toLowerCase();
+                const search = searchTerm.toLowerCase();
+                return text.includes(search);
+            });
+            
+            // Clear and repopulate select
+            select.innerHTML = '';
+            filtered.forEach(option => {
+                select.appendChild(option.cloneNode(true));
+            });
+            
+            // Show suggestions
+            if (searchTerm.length > 1) {
+                showSuggestions(filtered.slice(0, 10), searchTerm);
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
+        }
+        
+        function showSuggestions(options, searchTerm) {
+            suggestionsDiv.innerHTML = '';
+            
+            options.forEach(option => {
+                if (option.value === '') return;
+                
+                const div = document.createElement('div');
+                div.className = 'student-suggestion';
+                div.textContent = option.text;
+                div.addEventListener('click', function() {
+                    select.value = option.value;
+                    searchInput.value = option.text;
+                    suggestionsDiv.style.display = 'none';
+                });
+                suggestionsDiv.appendChild(div);
+            });
+            
+            if (options.length > 0) {
+                suggestionsDiv.style.display = 'block';
+            }
+        }
+        
+        // Event listeners
+        searchInput.addEventListener('input', function() {
+            filterOptions(this.value);
+        });
+        
+        searchInput.addEventListener('focus', function() {
+            if (this.value.length > 1) {
+                filterOptions(this.value);
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!wrapper.contains(e.target)) {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+        
+        // Also filter by form if available
+        const formFilter = document.querySelector('select[name="form"], select[id*="form"]');
+        if (formFilter) {
+            formFilter.addEventListener('change', function() {
+                const selectedForm = this.value;
+                if (selectedForm) {
+                    // Filter options by form
+                    const formFiltered = allOptions.filter(option => {
+                        if (option.value === '') return true;
+                        // Check if option text contains the form
+                        return option.text.includes(`Form ${selectedForm.substring(1)}`) || 
+                               option.text.includes(selectedForm);
+                    });
+                    
+                    select.innerHTML = '';
+                    formFiltered.forEach(option => {
+                        select.appendChild(option.cloneNode(true));
+                    });
+                } else {
+                    // Show all options
+                    select.innerHTML = '';
+                    allOptions.forEach(option => {
+                        select.appendChild(option.cloneNode(true));
+                    });
+                }
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

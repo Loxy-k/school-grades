@@ -97,20 +97,62 @@ class GradeAdmin(admin.ModelAdmin):
     def get_grade_display(self, obj):
         return obj.get_grade_display()
     get_grade_display.short_description = 'Grade'
-
+# admin.py - Simplified version focusing on the core requirements
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
-    # ... existing code ...
+    list_display = ('student', 'subject', 'score', 'get_grade_display', 'term', 'teacher_name')
+    list_filter = ('student__form', 'subject', 'term')  # Filter by form, subject, term
+    search_fields = ('student__first_name', 'student__last_name', 'student__student_id', 'subject__name')
     
-    # Add a custom admin view for bulk grade entry
+    # Order students alphabetically in dropdown
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            # Get current filter from URL or request
+            form_filter = request.GET.get('student__form__exact', '')
+            
+            # Start with all students ordered alphabetically
+            queryset = Student.objects.all().order_by('last_name', 'first_name')
+            
+            # Apply form filter if specified
+            if form_filter:
+                queryset = queryset.filter(form=form_filter)
+            
+            kwargs["queryset"] = queryset
+            
+        elif db_field.name == "subject":
+            # Empty subject list initially - admin adds subjects
+            kwargs["queryset"] = Subject.objects.all().order_by('name')
+            
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    # Customize the add form to include filtering
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        # Add form filter to the add form if available
+        form_filter = request.GET.get('form', '')
+        if form_filter and 'student' in form.base_fields:
+            form.base_fields['student'].queryset = Student.objects.filter(
+                form=form_filter
+            ).order_by('last_name', 'first_name')
+        
+        return form
+    
+    fields = ('student', 'subject', 'score', 'term', 'teacher_name')
+    
+    def get_grade_display(self, obj):
+        return obj.get_grade_display()
+    get_grade_display.short_description = 'Grade'
+    
+    # Change list template with custom filtering
     change_list_template = 'admin/grades/grade/change_list.html'
     
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('bulk-add/', self.admin_site.admin_view(self.bulk_add_view), name='grades_grade_bulk_add'),
-        ]
-        return custom_urls + urls
+    def changelist_view(self, request, extra_context=None):
+        # Add form choices to context for filtering
+        extra_context = extra_context or {}
+        extra_context['form_choices'] = Student.FORM_CHOICES
+        return super().changelist_view(request, extra_context=extra_context)
+
 def bulk_add_view(self, request):
     """Simplified bulk add view"""
     form = request.GET.get('form', '')
@@ -134,3 +176,4 @@ def bulk_add_view(self, request):
         pass
     
     return render(request, 'admin/bulk_add_grades_simple.html', context)
+

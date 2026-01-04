@@ -15,7 +15,8 @@ class Student(models.Model):
         ('F4', 'Form 4'),
     ]
     form = models.CharField(max_length=2, choices=FORM_CHOICES, default='F1')
-    
+    class Meta:
+        ordering = ['form', 'last_name', 'first_name'] 
     # Report card remarks
     form_teacher_remarks = models.TextField(blank=True, null=True)
     head_teacher_remarks = models.TextField(blank=True, null=True)
@@ -184,3 +185,4 @@ class Grade(models.Model):
         else:
             grade = self.junior_grade()
             return grade if grade else ''
+

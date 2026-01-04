@@ -111,59 +111,26 @@ class GradeAdmin(admin.ModelAdmin):
             path('bulk-add/', self.admin_site.admin_view(self.bulk_add_view), name='grades_grade_bulk_add'),
         ]
         return custom_urls + urls
+def bulk_add_view(self, request):
+    """Simplified bulk add view"""
+    form = request.GET.get('form', '')
+    subject_id = request.GET.get('subject', '')
+    term = request.GET.get('term', 'T1')
     
-    def bulk_add_view(self, request):
-        """Custom view for bulk grade entry with filtering"""
-        context = {
-            **self.admin_site.each_context(request),
-            'title': 'Bulk Add Grades',
-            'opts': self.model._meta,
-            'form_choices': Student.FORM_CHOICES,
-            'term_choices': Grade.TERM_CHOICES,
-            'subjects': Subject.objects.all().order_by('name'),
-        }
-        
-        if request.method == 'POST':
-            # Handle bulk grade creation
-            form = request.POST.get('form')
-            term = request.POST.get('term')
-            subject_id = request.POST.get('subject')
-            
-            if form and term and subject_id:
-                students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
-                context['selected_form'] = form
-                context['selected_term'] = term
-                context['selected_subject'] = int(subject_id)
-                context['students'] = students
-                
-                if 'save_grades' in request.POST:
-                    # Save grades
-                    subject = Subject.objects.get(id=subject_id)
-                    created_count = 0
-                    
-                    for student in students:
-                        score_field = f'score_{student.id}'
-                        teacher_field = f'teacher_{student.id}'
-                        
-                        if score_field in request.POST:
-                            score = request.POST.get(score_field)
-                            teacher_name = request.POST.get(teacher_field, '')
-                            
-                            if score:
-                                # Create or update grade
-                                grade, created = Grade.objects.update_or_create(
-                                    student=student,
-                                    subject=subject,
-                                    term=term,
-                                    defaults={
-                                        'score': score,
-                                        'teacher_name': teacher_name
-                                    }
-                                )
-                                if created:
-                                    created_count += 1
-                    
-                    messages.success(request, f'Successfully saved grades for {created_count} students.')
-                    return redirect('admin:grades_grade_bulk_add')
-        
-        return render(request, 'admin/bulk_add_grades.html', context)
+    context = {
+        **self.admin_site.each_context(request),
+        'title': 'Quick Grade Entry',
+        'opts': self.model._meta,
+        'subjects': Subject.objects.all().order_by('name'),
+    }
+    
+    if form:
+        students = Student.objects.filter(form=form).order_by('last_name', 'first_name')
+        context['students'] = students
+        context['form_name'] = dict(Student.FORM_CHOICES).get(form, form)
+    
+    if request.method == 'POST' and 'save' in request.POST:
+        # Save grades logic here
+        pass
+    
+    return render(request, 'admin/bulk_add_grades_simple.html', context)

@@ -15,8 +15,7 @@ class Student(models.Model):
         ('F4', 'Form 4'),
     ]
     form = models.CharField(max_length=2, choices=FORM_CHOICES, default='F1')
-    class Meta:
-        ordering = ['form', 'last_name', 'first_name'] 
+     
     # Report card remarks
     form_teacher_remarks = models.TextField(blank=True, null=True)
     head_teacher_remarks = models.TextField(blank=True, null=True)
@@ -26,7 +25,8 @@ class Student(models.Model):
     # Optional password assigned by form teachers; used for initial student login
     assigned_password = models.CharField(max_length=50, null=True, blank=True,
                                          help_text='Password assigned by form teacher for initial login (plaintext)')
-
+    class Meta:
+        ordering = ['form', 'last_name', 'first_name']
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.student_id}) - {self.get_form_display()}"
 
@@ -185,4 +185,5 @@ class Grade(models.Model):
         else:
             grade = self.junior_grade()
             return grade if grade else ''
+
 

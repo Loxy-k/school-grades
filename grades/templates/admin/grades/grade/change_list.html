@@ -1,0 +1,123 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Custom styles for grade admin */
+    .form-filter-header {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+        border-left: 4px solid #1e3c72;
+    }
+    
+    .quick-actions {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .action-button {
+        display: inline-block;
+        padding: 8px 16px;
+        margin-right: 10px;
+        background: #1e3c72;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    
+    .action-button:hover {
+        background: #2a5298;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    {% if cl.formset and cl.formset.errors %}
+        <p class="errornote">
+        {% if cl.formset.total_error_count == 1 %}{% translate "Please correct the error below." %}{% else %}{% translate "Please correct the errors below." %}{% endif %}
+        </p>
+        {{ cl.formset.non_form_errors }}
+    {% endif %}
+    
+    <!-- Custom Filter Header -->
+    <div class="form-filter-header">
+        <h3>📊 Quick Filters</h3>
+        <div class="quick-actions">
+            <strong>Filter by Form:</strong>
+            <a href="?student__form__exact=F1" class="action-button">Form 1</a>
+            <a href="?student__form__exact=F2" class="action-button">Form 2</a>
+            <a href="?student__form__exact=F3" class="action-button">Form 3</a>
+            <a href="?student__form__exact=F4" class="action-button">Form 4</a>
+            <a href="?" class="action-button" style="background: #6c757d;">Clear Filters</a>
+        </div>
+        
+        <div class="quick-actions">
+            <strong>Filter by Term:</strong>
+            <a href="?term__exact=T1" class="action-button">Term 1</a>
+            <a href="?term__exact=T2" class="action-button">Term 2</a>
+            <a href="?term__exact=T3" class="action-button">Term 3</a>
+        </div>
+    </div>
+    
+    <!-- Bulk Action Button -->
+    <div class="object-tools">
+        {% block object-tools-items %}
+            {% if has_add_permission %}
+                <li>
+                    <a href="{% url 'admin:grades_grade_bulk_add' %}" class="addlink" style="background: #28a745; padding: 10px 15px;">
+                        <i class="fas fa-plus-circle"></i> Bulk Add Grades
+                    </a>
+                </li>
+                <li>
+                    <a href="add/" class="addlink">
+                        {% blocktranslate with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktranslate %}
+                    </a>
+                </li>
+            {% endif %}
+        {% endblock %}
+    </div>
+    
+    <!-- Original content -->
+    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+        <div class="changelist-form-container">
+            {% block search %}{% search_form cl %}{% endblock %}
+            {% block date_hierarchy %}{% date_hierarchy cl %}{% endblock %}
+            
+            <form id="changelist-form" method="post"{% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %} novalidate>{% csrf_token %}
+            {% if cl.formset %}
+                <div>{{ cl.formset.management_form }}</div>
+            {% endif %}
+            
+            {% block result_list %}
+                {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+                {% result_list cl %}
+                {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+            {% endblock %}
+            
+            {% block pagination %}{% pagination cl %}{% endblock %}
+            </form>
+        </div>
+        
+        {% block filters %}
+            {% if cl.has_filters %}
+            <div id="changelist-filter">
+                <h2>{% translate 'Filter' %}</h2>
+                {% if cl.has_active_filters %}<h3 id="changelist-filter-clear">
+                    <a href="{{ cl.clear_all_filters_qs }}">✕ {% translate "Clear all filters" %}</a>
+                </h3>{% endif %}
+                {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+            </div>
+            {% endif %}
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}
